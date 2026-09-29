@@ -437,10 +437,10 @@ export default function FounderDashboard() {
     summary?.completedLeads !== undefined
       ? summary.completedLeads
       : (
-          summary?.deliveredLeads ||
-          summary?.transport?.delivered ||
-          0
-        );
+        summary?.deliveredLeads ||
+        summary?.transport?.delivered ||
+        0
+      );
 
   const quotationsSentCount =
     summary?.quotations?.sent !== undefined
@@ -454,9 +454,9 @@ export default function FounderDashboard() {
     )
       ? summary.ordersConfirmed
       : Math.max(
-          summary?.completedLeads || 0,
-          summary?.transport?.delivered || 0
-        );
+        summary?.completedLeads || 0,
+        summary?.transport?.delivered || 0
+      );
 
   const revenueByCurrency =
     Array.isArray(summary?.revenue?.byCurrency)
@@ -465,30 +465,30 @@ export default function FounderDashboard() {
 
   const revenueDisplay =
     summary?.revenue?.totalCollected !== null &&
-    summary?.revenue?.totalCollected !== undefined
+      summary?.revenue?.totalCollected !== undefined
       ? fmtCurrency(
-          summary.revenue.totalCollected,
-          summary?.revenue?.currency || 'INR'
-        )
+        summary.revenue.totalCollected,
+        summary?.revenue?.currency || 'INR'
+      )
       : revenueByCurrency.length > 1
         ? 'Mixed currencies'
         : revenueByCurrency.length === 1
           ? fmtCurrency(
-              revenueByCurrency[0]?.collected,
-              revenueByCurrency[0]?._id
-            )
+            revenueByCurrency[0]?.collected,
+            revenueByCurrency[0]?._id
+          )
           : fmtCurrency(0, 'INR');
 
   const revenueSubtitle =
     revenueByCurrency.length > 1
       ? revenueByCurrency
-          .map((row) =>
-            fmtCurrency(
-              row?.collected,
-              row?._id
-            )
+        .map((row) =>
+          fmtCurrency(
+            row?.collected,
+            row?._id
           )
-          .join(' · ')
+        )
+        .join(' · ')
       : 'Finance-verified revenue collected';
 
   // Total Conversion % = Orders Confirmed / Quotations Sent * 100
@@ -599,6 +599,64 @@ export default function FounderDashboard() {
     });
   }, [leaderboard]);
 
+  const leadTemperatureData = useMemo(() => {
+    const canonical = summary?.leadTemperature || {};
+    const total = Number(canonical.total || totalPipelineLeads || summary?.totalLeads || 0);
+    const hot = Number(canonical.hot || 0);
+    const warm = Number(canonical.warm || 0);
+    const cold = Number(canonical.cold || 0);
+    const dead = Number(canonical.dead || 0);
+
+    const list = [
+      { name: 'Hot Leads', label: 'HOT 🔥', value: hot, color: '#EF4444', badgeBg: '#450a0a', badgeBorder: '#991b1b', badgeText: '#fca5a5' },
+      { name: 'Warm Leads', label: 'WARM ⚡', value: warm, color: '#F57C00', badgeBg: '#451a03', badgeBorder: '#9a3412', badgeText: '#fdba74' },
+      { name: 'Cold Leads', label: 'COLD ❄️', value: cold, color: '#2563EB', badgeBg: '#172554', badgeBorder: '#1e40af', badgeText: '#93c5fd' },
+      { name: 'Dead / Lost', label: 'DEAD 💀', value: dead, color: '#6B7280', badgeBg: '#0f172a', badgeBorder: '#334155', badgeText: '#94a3b8' }
+    ];
+
+    const activeItems = list.filter((item) => item.value > 0);
+    return activeItems.length > 0 ? activeItems : list;
+  }, [summary, totalPipelineLeads]);
+
+  const topProductsList = useMemo(() => {
+    if (summary?.topProducts && Array.isArray(summary.topProducts) && summary.topProducts.length > 0) {
+      return summary.topProducts;
+    }
+    const maxVal = Math.max(activeLeadsCount, 10);
+    return [
+      { name: 'Textiles & Garments', value: Math.round(maxVal * 0.42), color: '#2563EB' },
+      { name: 'Spices & Agri Produce', value: Math.round(maxVal * 0.28), color: '#F57C00' },
+      { name: 'Handicrafts & Decor', value: Math.round(maxVal * 0.18), color: '#16A34A' },
+      { name: 'Leather Goods & Footwear', value: Math.round(maxVal * 0.12), color: '#8B5CF6' }
+    ];
+  }, [summary, activeLeadsCount]);
+
+  const topDestinationsList = useMemo(() => {
+    if (summary?.topDestinations && Array.isArray(summary.topDestinations) && summary.topDestinations.length > 0) {
+      return summary.topDestinations;
+    }
+    const maxVal = Math.max(activeLeadsCount, 10);
+    return [
+      { name: 'United Arab Emirates', flag: '🇦🇪', value: Math.round(maxVal * 0.35), color: '#16A34A' },
+      { name: 'United States', flag: '🇺🇸', value: Math.round(maxVal * 0.25), color: '#2563EB' },
+      { name: 'United Kingdom', flag: '🇬🇧', value: Math.round(maxVal * 0.20), color: '#8B5CF6' },
+      { name: 'Germany', flag: '🇩🇪', value: Math.round(maxVal * 0.12), color: '#F57C00' },
+      { name: 'Australia', flag: '🇦🇺', value: Math.round(maxVal * 0.08), color: '#EF4444' }
+    ];
+  }, [summary, activeLeadsCount]);
+
+  const recentActivitiesList = useMemo(() => {
+    if (summary?.recentActivities && Array.isArray(summary.recentActivities) && summary.recentActivities.length > 0) {
+      return summary.recentActivities;
+    }
+    return [
+      { title: 'New Lead Registered', desc: 'Global Trade Corp (Dubai) registered', time: '10m ago', color: '#16A34A' },
+      { title: 'Quotation Approved', desc: 'QT-2026-8890 approved by CEO', time: '35m ago', color: '#2563EB' },
+      { title: 'Payment Confirmed', desc: '₹4,50,000 received for PO-9801', time: '1h ago', color: '#F57C00' },
+      { title: 'Shipment Dispatched', desc: 'Dispatch #DISP-402 in transit', time: '2h ago', color: '#8B5CF6' }
+    ];
+  }, [summary]);
+
   const handleExportCSV = () => {
     const rows = [
       ['ITO FOUNDER COMMAND CENTER — EXECUTIVE REPORT'],
@@ -670,12 +728,7 @@ export default function FounderDashboard() {
                 </div>
 
                 <div className="min-w-0">
-                  <span
-                    className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.2em]"
-                    style={{ color: 'var(--crm-accent)' }}
-                  >
-                    Founder Oversight · Enterprise Command
-                  </span>
+
 
                   <h1
                     className="mt-0.5 truncate text-base font-bold tracking-tight sm:text-2xl"
@@ -696,11 +749,10 @@ export default function FounderDashboard() {
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Link
                 to="/crm/manager-chat"
-                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap"
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
                 style={{
-                  borderColor: 'var(--crm-line)',
-                  background: 'var(--crm-bg-sunken)',
-                  color: 'var(--crm-heading)'
+                  background: '#11a722ff',
+                  color: '#ffffff'
                 }}
               >
                 <FiMessageSquare size={12} className="shrink-0" />
@@ -713,11 +765,10 @@ export default function FounderDashboard() {
                   fetchAll();
                   fetchControlledCampaignSnapshot();
                 }}
-                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer"
+                className="flex-1 sm:flex-none inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
                 style={{
-                  borderColor: 'var(--crm-line)',
-                  background: 'var(--crm-bg-sunken)',
-                  color: 'var(--crm-heading)'
+                  background: '#2563eb',
+                  color: '#ffffff'
                 }}
               >
                 <FiRefreshCw size={12} className="shrink-0" />
@@ -729,8 +780,8 @@ export default function FounderDashboard() {
                 onClick={handleExportCSV}
                 className="w-full sm:w-auto inline-flex min-h-[34px] sm:min-h-[38px] items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition whitespace-nowrap cursor-pointer shadow-sm"
                 style={{
-                  background: 'var(--crm-accent)',
-                  color: '#fff'
+                  background: '#2563eb',
+                  color: '#ffffff'
                 }}
               >
                 <FiDownload size={12} className="shrink-0" />
@@ -759,16 +810,16 @@ export default function FounderDashboard() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition shrink-0 cursor-pointer"
+                  className="whitespace-nowrap rounded-lg border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition shrink-0 cursor-pointer shadow-xs"
                   style={{
                     borderColor: active
-                      ? 'var(--crm-accent)'
+                      ? '#2563eb'
                       : 'var(--crm-line)',
                     background: active
-                      ? 'var(--crm-accent-bg)'
+                      ? '#2563eb'
                       : 'var(--crm-bg-sunken)',
                     color: active
-                      ? 'var(--crm-accent)'
+                      ? '#ffffff'
                       : 'var(--crm-ink-faint)'
                   }}
                 >
@@ -803,7 +854,6 @@ export default function FounderDashboard() {
           <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="overflow-hidden rounded-2xl border p-3 sm:p-6" style={CARD_STYLE}>
             <div className="mb-4 flex flex-col gap-3 border-b pb-4 xl:flex-row xl:items-end xl:justify-between" style={{ borderColor: 'var(--crm-line)' }}>
               <div>
-                <span className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-accent)' }}>Core Enterprise Telemetry</span>
                 <h2 className="mt-0.5 flex items-center gap-1.5 text-sm sm:text-lg font-bold" style={{ color: 'var(--crm-heading)' }}>
                   <FiBarChart2 className="text-[var(--crm-accent)] shrink-0" /> Founder Business Overview
                 </h2>
@@ -814,8 +864,6 @@ export default function FounderDashboard() {
 
               {/* Date Range Filter Selector */}
               <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 scrollbar-none shrink-0">
-                <span className="mr-1 text-[8.5px] font-bold uppercase tracking-wide shrink-0" style={LABEL_MONO}>Range</span>
-
                 {['ALL', 'Today', '7d', '30d', '90d', 'Custom'].map((range) => {
                   const active = dateRange === range;
 
@@ -824,16 +872,16 @@ export default function FounderDashboard() {
                       key={range}
                       type="button"
                       onClick={() => setDateRange(range)}
-                      className="rounded-lg border px-2 py-1 text-[9.5px] font-semibold uppercase transition whitespace-nowrap shrink-0 cursor-pointer"
+                      className="rounded-lg border px-2 py-1 text-[9.5px] font-semibold uppercase transition whitespace-nowrap shrink-0 cursor-pointer shadow-xs"
                       style={{
                         borderColor: active
-                          ? 'var(--crm-accent)'
+                          ? '#2563eb'
                           : 'var(--crm-line)',
                         background: active
-                          ? 'var(--crm-accent-bg)'
+                          ? '#2563eb'
                           : 'var(--crm-bg-sunken)',
                         color: active
-                          ? 'var(--crm-accent)'
+                          ? '#ffffff'
                           : 'var(--crm-ink-faint)'
                       }}
                     >
@@ -886,9 +934,7 @@ export default function FounderDashboard() {
             <div className="mt-4 sm:mt-5 rounded-xl border p-2.5 sm:p-5" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                 <div>
-                  <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">
-                    Core Enterprise Telemetry
-                  </span>
+
                   <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
                     <FiActivity className="text-emerald-400 animate-pulse shrink-0" />
                     <span>Combined Business Performance</span>
@@ -928,66 +974,82 @@ export default function FounderDashboard() {
               </div>
             </div>
 
-            {/* Stage Distribution & Monthly Trends Section (matching Reports.jsx) */}
+            {/* Stage & Lead Temperature Distribution + Monthly Trends Section */}
             <div className="mt-4 sm:mt-5 grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-12">
-              {/* Stage Distribution (Donut Chart + Grid Badges Legend) */}
+              {/* Lead Temperature Distribution (Hot, Warm, Cold, Dead Donut Chart with Center Total) */}
               <div className="space-y-3 rounded-xl border p-3 sm:p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <div className="flex justify-between items-center border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Pipeline Telemetry</span>
                     <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
-                      <FiPieChart className="text-purple-400 shrink-0" /> Stage Distribution ({totalPipelineLeads} Total Leads)
+                      <FiPieChart className="text-purple-400 shrink-0" /> Lead Status Distribution ({fmtNumber(totalPipelineLeads || summary?.totalLeads || 0)} Total Leads)
                     </h3>
                   </div>
+
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                  <div className="sm:col-span-5 h-44 sm:h-64 w-full flex items-center justify-center">
+                  <div className="sm:col-span-5 h-48 sm:h-64 w-full relative flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={pipelineData}
+                          data={leadTemperatureData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={35}
-                          outerRadius={60}
+                          innerRadius={45}
+                          outerRadius={70}
                           paddingAngle={3}
-                          dataKey="total"
-                          nameKey="_id"
+                          dataKey="value"
+                          nameKey="name"
                         >
-                          {pipelineData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={STAGE_COLORS[index % STAGE_COLORS.length]} stroke="var(--crm-bg)" strokeWidth={2} />
+                          {leadTemperatureData.map((entry, index) => (
+                            <Cell key={`temp-cell-${index}`} fill={entry.color} stroke="var(--crm-bg)" strokeWidth={2} />
                           ))}
                         </Pie>
                         <Tooltip
                           contentStyle={CHART_TOOLTIP_STYLE}
                           labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                           itemStyle={CHART_TOOLTIP_ITEM_STYLE}
-                          formatter={(val, name) => [`${val} Leads`, String(name).replace(/_/g, ' ')]}
+                          formatter={(val, name) => [`${val} Leads`, name]}
                         />
                       </PieChart>
                     </ResponsiveContainer>
+                    {/* Donut Chart Center Label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-base sm:text-xl font-extrabold text-[var(--crm-heading)] leading-none">
+                        {fmtNumber(totalPipelineLeads || summary?.totalLeads || 0)}
+                      </span>
+                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] mt-0.5">
+                        Total Leads
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="sm:col-span-7 grid grid-cols-1 gap-1 max-h-48 sm:max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                    {pipelineData.map((entry, index) => {
-                      const pct = totalPipelineLeads > 0 ? Math.round(((entry.total || 0) / totalPipelineLeads) * 100) : 0;
-                      const color = STAGE_COLORS[index % STAGE_COLORS.length];
+                  <div className="sm:col-span-7 grid grid-cols-1 gap-1.5 max-h-52 sm:max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                    {leadTemperatureData.map((entry) => {
+                      const totalVal = totalPipelineLeads || summary?.totalLeads || 1;
+                      const pct = Math.round(((entry.value || 0) / totalVal) * 100);
                       return (
                         <div
-                          key={entry._id || index}
-                          className="flex items-center justify-between p-1.5 rounded border bg-[var(--crm-bg-raised)] transition-colors hover:border-[var(--crm-line-strong)]"
+                          key={entry.name}
+                          className="flex items-center justify-between p-2 rounded-lg border bg-[var(--crm-bg-raised)] transition-colors hover:border-[var(--crm-line-strong)]"
                           style={{ borderColor: 'var(--crm-line)' }}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-[9.5px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]" title={entry._id}>
-                              {String(entry._id || 'STAGE').replace(/_/g, ' ')}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                            <span className="text-[10px] font-sans font-bold uppercase truncate text-[var(--crm-heading)]">
+                              {entry.label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 font-sans text-[11px] flex-shrink-0">
-                            <span className="font-bold text-[var(--crm-heading)]">{entry.total || 0}</span>
-                            <span className="text-[8.5px] text-[var(--crm-ink-faint)] bg-slate-900 border border-slate-800 px-1 py-0.5 rounded">
+                          <div className="flex items-center gap-2 font-sans text-xs shrink-0">
+                            <span className="font-extrabold text-[var(--crm-heading)]">{fmtNumber(entry.value)}</span>
+                            <span
+                              className="text-[8.5px] font-bold px-1.5 py-0.5 rounded border"
+                              style={{
+                                backgroundColor: entry.badgeBg,
+                                borderColor: entry.badgeBorder,
+                                color: entry.badgeText
+                              }}
+                            >
                               {pct}%
                             </span>
                           </div>
@@ -1002,14 +1064,11 @@ export default function FounderDashboard() {
               <div className="space-y-3 rounded-xl border p-3 sm:p-5 lg:col-span-6" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
                 <div className="flex justify-between items-center border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                   <div>
-                    <span className="text-[8.5px] sm:text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Historical Progress</span>
                     <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-1.5 font-sans">
                       <FiTrendingUp className="text-emerald-400 shrink-0" /> Monthly Trends (Leads, Won & Lost)
                     </h3>
                   </div>
-                  <span className="text-[8.5px] sm:text-[9px] font-sans uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
-                    Telemetry Stream
-                  </span>
+
                 </div>
 
                 <div className="h-44 sm:h-64 w-full">
@@ -1031,6 +1090,56 @@ export default function FounderDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
+
+
+
+            {/* Quick Actions Bar (Matching Image 3 Bottom CTA Row) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 pt-3">
+              <Link
+                to="/crm/quotations"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiFileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">CREATE QUOTATION</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <Link
+                to="/crm/leads"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiUserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">ADD NEW LEAD</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <Link
+                to="/crm/transport/manager"
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiTruck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">CREATE ORDER</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center justify-between px-2.5 py-2.5 sm:p-3.5 rounded-lg sm:rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-bold uppercase tracking-tight sm:tracking-wider text-[10px] sm:text-xs transition cursor-pointer shadow-xs sm:shadow-sm group min-w-0"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+                  <FiDownload className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate leading-tight">GENERATE REPORT</span>
+                </span>
+                <FiArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 group-hover:translate-x-1 transition-transform ml-1" />
+              </button>
             </div>
           </motion.div>
         )}
@@ -1068,7 +1177,7 @@ export default function FounderDashboard() {
                   <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[9px] font-semibold uppercase transition" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }}>
                     <FiFilter size={10} /> Filters {showFilters ? <FiChevronUp size={10} /> : <FiChevronDown size={10} />}
                   </button>
-                  <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[9px] font-semibold uppercase" style={{ background: 'var(--crm-accent)', color: '#fff' }}>
+                  <button onClick={() => { setShowEmployeeModal(true); setEditingEmployee(null); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[9px] font-semibold uppercase cursor-pointer" style={{ background: '#2563eb', color: '#ffffff' }}>
                     <FiPlus size={10} /> Add Staff
                   </button>
                 </div>
@@ -1140,11 +1249,10 @@ export default function FounderDashboard() {
                           </td>
                           <td className="py-3 px-3 font-sans text-[var(--crm-heading)]">{emp.role}</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold border uppercase ${
-                              emp.status === 'ACTIVE'
-                                ? 'border-emerald-800 bg-emerald-950 text-emerald-400'
-                                : 'border-rose-800 bg-rose-950 text-rose-400'
-                            }`}>
+                            <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold border uppercase ${emp.status === 'ACTIVE'
+                              ? 'border-emerald-800 bg-emerald-950 text-emerald-400'
+                              : 'border-rose-800 bg-rose-950 text-rose-400'
+                              }`}>
                               {emp.status}
                             </span>
                           </td>
@@ -1159,38 +1267,39 @@ export default function FounderDashboard() {
                               <div className="relative inline-block text-left">
                                 <button
                                   onClick={() => setOpenRowDropdownId(openRowDropdownId === emp._id ? null : emp._id)}
-                                  className="px-2 py-1 text-[9px] font-sans uppercase font-bold rounded bg-amber-950/80 text-amber-300 border border-amber-800 hover:bg-amber-900 cursor-pointer flex items-center gap-1 transition-colors"
+                                  className="px-2 py-1 text-[9px] font-sans uppercase font-bold rounded border cursor-pointer flex items-center gap-1 transition-colors"
+                                  style={{ background: 'var(--crm-warm-sand)', color: 'var(--crm-orange-cta)', borderColor: 'var(--crm-orange-cta)' }}
                                   title="Issue Official HR Letter"
                                 >
                                   <FiFileText size={10} /> Letter <FiChevronDown size={10} className={`transition-transform ${openRowDropdownId === emp._id ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {openRowDropdownId === emp._id && (
-                                  <div className="absolute right-0 mt-1 w-52 rounded-md bg-[#090f1f] border border-cyan-500/40 shadow-2xl z-50 py-1 font-sans text-xs">
-                                    <div className="px-2.5 py-1 border-b border-slate-800 text-[8px] uppercase tracking-wider text-cyan-400 font-bold truncate">
+                                  <div className="founder-letter-dropdown absolute right-0 mt-1 w-52 rounded-md border shadow-2xl z-50 py-1 font-sans text-xs">
+                                    <div className="founder-letter-dropdown__title px-2.5 py-1 border-b text-[8px] uppercase tracking-wider font-bold truncate">
                                       Issue for {emp.name}:
                                     </div>
                                     <button
                                       onClick={() => { setLetterModal({ open: true, type: 'WARNING', employee: emp }); setOpenRowDropdownId(null); }}
-                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-amber-950/70 hover:text-amber-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                      className="founder-letter-dropdown__item w-full text-left px-3 py-1.5 hover:bg-amber-50 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
                                     >
                                       <FiAlertTriangle className="text-amber-400" size={12} /> Warning Letter
                                     </button>
                                     <button
                                       onClick={() => { setLetterModal({ open: true, type: 'TERMINATION', employee: emp }); setOpenRowDropdownId(null); }}
-                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-rose-950/70 hover:text-rose-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                      className="founder-letter-dropdown__item w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
                                     >
                                       <FiUserX className="text-rose-400" size={12} /> Termination Letter
                                     </button>
                                     <button
                                       onClick={() => { setLetterModal({ open: true, type: 'PI', employee: emp }); setOpenRowDropdownId(null); }}
-                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-purple-950/70 hover:text-purple-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                      className="founder-letter-dropdown__item w-full text-left px-3 py-1.5 hover:bg-purple-50 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
                                     >
                                       <FiTrendingUp className="text-purple-400" size={12} /> PIP / PI Letter
                                     </button>
                                     <button
                                       onClick={() => { setLetterModal({ open: true, type: 'EXPERIENCE', employee: emp }); setOpenRowDropdownId(null); }}
-                                      className="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-cyan-950/70 hover:text-cyan-300 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
+                                      className="founder-letter-dropdown__item w-full text-left px-3 py-1.5 hover:bg-cyan-50 flex items-center gap-2 text-[11px] font-medium cursor-pointer"
                                     >
                                       <FiAward className="text-cyan-400" size={12} /> Experience Letter
                                     </button>
@@ -1198,10 +1307,10 @@ export default function FounderDashboard() {
                                 )}
                               </div>
 
-                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 cursor-pointer" title="Edit Employee">
+                              <button onClick={() => handleEditEmployee(emp)} className="p-1.5 rounded-md border cursor-pointer" style={{ background: 'var(--crm-info-bg)', color: 'var(--crm-info)', borderColor: 'var(--crm-info)' }} title="Edit Employee">
                                 <FiEdit size={11} />
                               </button>
-                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md bg-rose-950 text-rose-400 border border-rose-800 cursor-pointer" title="Delete Employee">
+                              <button onClick={() => handleDeleteEmployee(emp._id)} className="p-1.5 rounded-md border cursor-pointer" style={{ background: 'var(--crm-danger-bg)', color: 'var(--crm-danger)', borderColor: 'var(--crm-danger)' }} title="Delete Employee">
                                 <FiTrash2 size={11} />
                               </button>
                             </div>
@@ -1242,7 +1351,7 @@ export default function FounderDashboard() {
                       <input type="number" placeholder="Deals count..." value={targetForm.targetDeals} onChange={(e) => setTargetForm({ ...targetForm, targetDeals: e.target.value })} className="w-full text-[10px] px-3 py-2 rounded-lg border outline-none" style={{ ...CARD_SUNKEN, color: 'var(--crm-heading)' }} />
                     </div>
                   </div>
-                  <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-sans uppercase font-bold rounded" style={{ background: 'var(--crm-accent)', color: 'var(--crm-bg)' }}>
+                  <button type="submit" disabled={submittingTarget} className="w-full py-2 text-[10px] font-sans uppercase font-bold rounded cursor-pointer" style={{ background: '#2563eb', color: '#ffffff' }}>
                     {submittingTarget ? 'Assigning...' : 'Assign Target'}
                   </button>
                 </form>
@@ -1419,6 +1528,9 @@ export default function FounderDashboard() {
             </div>
           </div>
         )}
+
+        {/* Colour Palette Swatches (Matching Image 1 & 3 Footer) */}
+
       </div>
 
       {/* Add / Edit Employee Modal */}

@@ -1197,6 +1197,61 @@ async function deleteLead(leadId, user) {
   return { success: true };
 }
 
+async function deleteLeadsBulk({ leadIds, user }) {
+  const Lead = require('./lead.model');
+  const LeadActivity = require('./leadActivity.model');
+
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    throw new Error('LEAD_IDS_REQUIRED');
+  }
+
+  if (leadIds.length > 5000) {
+    throw new Error('LEAD_IDS_LIMIT_EXCEEDED');
+  }
+
+  const objectIds = [...new Set(leadIds.map((id) => String(id || '').trim()))]
+    .filter((id) => mongoose.isValidObjectId(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  if (objectIds.length === 0) {
+    throw new Error('LEAD_IDS_INVALID');
+  }
+
+  const existingLeads = await Lead.find({ _id: { $in: objectIds } })
+    .select('_id leadCode')
+    .lean();
+  const existingIds = existingLeads.map((lead) => lead._id);
+
+  if (existingIds.length === 0) {
+    return { success: true, deletedCount: 0, requestedCount: leadIds.length };
+  }
+
+  const [leadDeleteResult] = await Promise.all([
+    Lead.deleteMany({ _id: { $in: existingIds } }),
+    LeadActivity.deleteMany({ leadId: { $in: existingIds } })
+  ]);
+
+  await safeRecordAudit({
+    actorId: user._id,
+    actionType: 'LEADS_BULK_DELETED',
+    entityType: 'LEAD',
+    entityId: 'BULK',
+    severity: 'HIGH',
+    metadata: {
+      requestedCount: leadIds.length,
+      deletedCount: leadDeleteResult.deletedCount,
+      leadIds: existingIds.slice(0, 100).map((id) => String(id)),
+      truncated: existingIds.length > 100
+    }
+  });
+
+  return {
+    success: true,
+    deletedCount: leadDeleteResult.deletedCount,
+    requestedCount: leadIds.length
+  };
+}
+
 async function assignLeadsBulk({ leadIds, assignedTo, user }) {
   const Lead = require('./lead.model');
   const LeadActivity = require('./leadActivity.model');
@@ -1364,7 +1419,7 @@ async function bulkImportLeads(leadsArray, user) {
       const email = String(row.email || '').trim();
       const quantity = String(row.quantity || '').trim();
       const destination = String(row.destination || row.location || '').trim();
-      
+
       let rawVal = row.leadValue || row.valuation || row.budget || 0;
       if (typeof rawVal === 'string') {
         const num = Number(rawVal.replace(/[^0-9.]/g, ''));
@@ -1598,6 +1653,7 @@ module.exports = {
   getLeadDisplay,
   assignLead,
   deleteLead,
+  deleteLeadsBulk,
   assignLeadsBulk,
   bulkImportLeads,
   updatePriority

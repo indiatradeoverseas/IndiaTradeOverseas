@@ -540,6 +540,28 @@ async function deleteLead(req, res, next) {
   }
 }
 
+async function deleteLeadsBulk(req, res, next) {
+  try {
+    const result = await leadService.deleteLeadsBulk({
+      leadIds: req.body?.leadIds,
+      user: req.user
+    });
+
+    return ok(res, result, 'Leads deleted successfully', 200, req);
+  } catch (error) {
+    if (error.message === 'LEAD_IDS_REQUIRED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'leadIds array is required');
+    }
+    if (error.message === 'LEAD_IDS_LIMIT_EXCEEDED') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'A maximum of 5000 leads can be deleted at once');
+    }
+    if (error.message === 'LEAD_IDS_INVALID') {
+      return fail(res, 400, 'VALIDATION_FAILED', 'No valid lead IDs were provided');
+    }
+    return next(error);
+  }
+}
+
 
 async function assignLeadsBulk(req, res, next) {
   try {
@@ -1165,6 +1187,7 @@ module.exports = {
   changeLeadPriority,
   assignLead,
   deleteLead,
+  deleteLeadsBulk,
   assignLeadsBulk,
   bulkImportLeads
 };

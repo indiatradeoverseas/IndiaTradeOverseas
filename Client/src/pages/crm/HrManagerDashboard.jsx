@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFileUrl } from '../../config/env';
@@ -52,6 +52,7 @@ import { payslipApi } from '../../api/payslip';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -268,6 +269,45 @@ export default function HrManagerDashboard() {
     localStorage.setItem('scheduled_interviews', JSON.stringify(scheduledInterviews));
   }, [scheduledInterviews]);
 
+  // Real HR Analytics & Live Operational Metrics computation
+  const realHrAnalyticsData = useMemo(() => {
+    const totalStaff = employees.length || 0;
+    const presentCount = attendanceReport?.presentCount ?? attendanceReport?.present ?? 0;
+    const absentCount = attendanceReport?.absentCount ?? attendanceReport?.absent ?? 0;
+    const lateCount = attendanceReport?.lateCount ?? attendanceReport?.late ?? 0;
+    
+    const openVacancies = jobs.filter(j => j.status === 'OPEN' || j.isActive !== false).length;
+    const pendingApps = applications.filter(a => a.status === 'PENDING' || a.status === 'APPLIED' || !a.status).length;
+    const totalApps = applications.length;
+    const pendingLeaves = leaves.filter(l => l.status === 'PENDING' || l.status === 'PENDING_HR_APPROVAL').length;
+    const approvedLeaves = leaves.filter(l => l.status === 'APPROVED' || l.status === 'HR_APPROVED_EXTRA').length;
+    const pendingSignups = (pendingEmployees.length || 0) + (pendingTrialUsers.length || 0);
+
+    const metricsDistribution = [
+      { category: 'Total Staff', count: totalStaff, color: '#3B82F6' },
+      { category: 'Present Today', count: presentCount, color: '#16A34A' },
+      { category: 'Absent Today', count: absentCount, color: '#EF4444' },
+      { category: 'Open Jobs', count: openVacancies, color: '#F57C00' },
+      { category: 'Pending Apps', count: pendingApps, color: '#D4A017' },
+      { category: 'Pending Leaves', count: pendingLeaves, color: '#8B5CF6' },
+      { category: 'Pending Approvals', count: pendingSignups, color: '#06B6D4' }
+    ];
+
+    return {
+      totalStaff,
+      presentCount,
+      absentCount,
+      lateCount,
+      openVacancies,
+      pendingApps,
+      totalApps,
+      pendingLeaves,
+      approvedLeaves,
+      pendingSignups,
+      metricsDistribution
+    };
+  }, [employees, attendanceReport, jobs, applications, leaves, pendingEmployees, pendingTrialUsers]);
+
   useEffect(() => {
     fetchInitialData();
 
@@ -290,18 +330,18 @@ export default function HrManagerDashboard() {
   const fetchAttendanceLeaveDetails = async () => {
     try {
       const [settingsRes, balancesRes, logsRes, tasksRes] = await Promise.all([
-        leaveApi.getHRSettings().catch(() => null),
-        leaveApi.getAllBalances().catch(() => null),
-        leaveApi.getAuditLogs().catch(() => null),
-        taskApi.getTasks().catch(() => null)
+        leaveApi.getHRSettings().catch(() => ({ success: false })),
+        leaveApi.getAllBalances().catch(() => ({ success: false })),
+        leaveApi.getAuditLogs().catch(() => ({ success: false })),
+        taskApi.getTasks().catch(() => ({ success: false }))
       ]);
 
-      if (settingsRes && settingsRes.success) setHrSettings(settingsRes.data.settings);
-      if (balancesRes && balancesRes.success) setLeaveBalances(balancesRes.data.balances || []);
-      if (logsRes && logsRes.success) setAuditLogs(logsRes.data.logs || []);
-      if (tasksRes && tasksRes.success) setAssignedTasks(tasksRes.data.tasks || []);
+      if (settingsRes && settingsRes.success) setHrSettings(settingsRes.data?.settings || settingsRes.settings || {});
+      if (balancesRes && balancesRes.success) setLeaveBalances(balancesRes.data?.balances || balancesRes.balances || []);
+      if (logsRes && logsRes.success) setAuditLogs(logsRes.data?.logs || logsRes.logs || []);
+      if (tasksRes && tasksRes.success) setAssignedTasks(tasksRes.data?.tasks || tasksRes.tasks || []);
     } catch (err) {
-      console.error('Error fetching detailed attendance/leave data:', err);
+      console.warn('Attendance/leave details notice:', err.message);
     }
   };
 
@@ -1027,13 +1067,7 @@ const handleTriggerReset = async () => {
           >
             Allocate Task
           </button>
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm select-none"
-            style={{ ...LABEL_MONO, background: 'var(--crm-bg-raised)' }}
-          >
-            Level // Manager Access
-          </motion.div>
+         
         </div>
       </motion.div>
 
@@ -1184,6 +1218,100 @@ const handleTriggerReset = async () => {
                     )}
                   </div>
                 </div>
+
+                {/* REAL-TIME HR WORKFORCE & OPERATIONAL ANALYTICS GRAPH */}
+                <div className="border p-4 sm:p-5 rounded-2xl w-full overflow-hidden text-left space-y-4 shadow-sm" style={CARD}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/30 shrink-0">
+                        <FiTrendingUp size={18} />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-[var(--crm-heading)] font-sans flex flex-wrap items-center gap-2">
+                          <span>Real-Time HR Operational Analytics</span>
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-bold">LIVE DATA</span>
+                        </h3>
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
+                          Live counts for Total Staff, Present, Absent, Open Vacancies, Pending Applications, and Approvals
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Real Metric Pills Bar */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] font-mono">
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                        <span>Staff: <strong className="text-blue-500">{realHrAnalyticsData.totalStaff}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                        <span>Present: <strong className="text-emerald-500">{realHrAnalyticsData.presentCount}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                        <span>Absent: <strong className="text-rose-500">{realHrAnalyticsData.absentCount}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                        <span>Vacancies: <strong className="text-amber-500">{realHrAnalyticsData.openVacancies}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>
+                        <span>Apps: <strong className="text-yellow-500">{realHrAnalyticsData.pendingApps}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                        <span>Leaves: <strong className="text-purple-500">{realHrAnalyticsData.pendingLeaves}</strong></span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                        <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                        <span>Approvals: <strong className="text-cyan-500">{realHrAnalyticsData.pendingSignups}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Real Live Bar Chart */}
+                  <div className="w-full h-64 sm:h-72 font-sans pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={realHrAnalyticsData.metricsDistribution}
+                        margin={{ top: 15, right: 15, left: -15, bottom: 25 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.4} />
+                        <XAxis
+                          dataKey="category"
+                          stroke="var(--crm-ink-faint)"
+                          fontSize={10}
+                          tickLine={false}
+                          interval={0}
+                          angle={-15}
+                          textAnchor="end"
+                        />
+                        <YAxis stroke="var(--crm-ink-faint)" fontSize={11} tickLine={false} allowDecimals={false} />
+                        <Tooltip
+                          cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }}
+                          contentStyle={{
+                            background: 'var(--crm-bg-raised)',
+                            borderColor: 'var(--crm-line)',
+                            borderRadius: '12px',
+                            color: 'var(--crm-heading)',
+                            fontSize: '12px',
+                            boxShadow: 'var(--crm-shadow)',
+                            padding: '8px 12px'
+                          }}
+                          itemStyle={{ color: 'var(--crm-heading)', fontWeight: '600' }}
+                          labelStyle={{ color: 'var(--crm-heading)', fontWeight: '700', marginBottom: '2px' }}
+                          formatter={(value) => [`${value}`, 'Count']}
+                        />
+                        <Bar dataKey="count" name="Live Metric Count" radius={[6, 6, 0, 0]} barSize={36}>
+                          {realHrAnalyticsData.metricsDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1250,7 +1378,7 @@ const handleTriggerReset = async () => {
                             {pendingTrialUsers.map((u) => (
                               <tr key={u._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
                                 <td className="p-3 font-bold text-amber-400 font-mono">
-                                  <span className="bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded text-[9px]">
+                                  <span className="border border-amber-800 px-2 py-0.5 rounded text-[9px]">
                                     {u.trialId || 'TRL'}
                                   </span>
                                 </td>
@@ -1267,7 +1395,7 @@ const handleTriggerReset = async () => {
                                   {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                                 </td>
                                 <td className="p-3 text-center">
-                                  <span className="bg-amber-950/90 text-amber-300 border border-amber-700 text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
+                                  <span className="text-amber-300 border border-amber-700 text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
                                     PENDING HR APPROVAL
                                   </span>
                                 </td>
