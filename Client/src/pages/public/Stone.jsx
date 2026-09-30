@@ -2193,7 +2193,7 @@ export default function Stone() {
                             : 'lg:order-2'
                         }`}
                       >
-                        <div className="relative rounded-xl overflow-hidden shadow-md border border-[#DCCCB4] group h-64 sm:h-80 bg-[#A89E8E]/20">
+                        <div className="relative rounded-xl overflow-hidden shadow-md border border-[#DCCCB4] group h-64 sm:h-80 bg-[#A89E8E]/20 flex items-center justify-center">
                           <img
                             src={
                               item.image
@@ -2201,7 +2201,7 @@ export default function Stone() {
                             alt={
                               item.title
                             }
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500"
                           />
                         </div>
                       </div>
