@@ -4955,19 +4955,66 @@ export default function Onion() {
         }
 
         .ito-onion-page .ito-faq-item {
-          padding: 24px 0;
+          padding: 0;
           border-top: 0;
           border-bottom: 1px solid var(--premium-rule);
         }
 
         .ito-onion-page .ito-faq-q {
-          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          min-height: 64px;
+          padding: 20px 0;
+          margin: 0;
           font-size: 16px;
+          cursor: pointer;
+          list-style: none;
+        }
+
+        .ito-onion-page .ito-faq-q::-webkit-details-marker {
+          display: none;
+        }
+
+        .ito-onion-page .ito-faq-toggle {
+          flex-shrink: 0;
+          width: 20px;
+          height: 20px;
+        }
+
+        .ito-onion-page .ito-faq-item[open] .ito-faq-toggle-vertical {
+          display: none;
+        }
+
+        .ito-onion-page .ito-faq-q:focus-visible {
+          outline: 2px solid var(--gold);
+          outline-offset: 4px;
+          border-radius: 4px;
         }
 
         .ito-onion-page .ito-faq-a {
           max-width: 850px;
+          margin: 0;
+          padding: 0 44px 24px 0;
           line-height: 1.75;
+        }
+
+        .ito-onion-page .ito-cta .ito-button-primary {
+          background: var(--burgundy) !important;
+          border-color: var(--burgundy) !important;
+          color: var(--ivory) !important;
+        }
+
+        .ito-onion-page .ito-cta .ito-button:focus-visible {
+          outline: 2px solid var(--burgundy);
+          outline-offset: 4px;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          .ito-onion-page .ito-cta .ito-button-primary:hover {
+            background: var(--wine) !important;
+          }
         }
 
         /* Final CTA is intentionally spacious and not boxed. */
@@ -4987,9 +5034,27 @@ export default function Onion() {
         }
 
         .ito-onion-page .ito-cta h2 {
-          max-width: 850px;
-          font-size: clamp(46px, 6.2vw, 88px);
-          line-height: .94;
+          max-width: 16ch;
+          margin: 0;
+          font-size: clamp(36px, 4.3vw, 64px);
+          line-height: 1.08;
+          letter-spacing: -.025em;
+          text-align: left !important;
+          text-wrap: balance;
+        }
+
+        .ito-onion-page .ito-cta-heading .ito-eyebrow {
+          margin: 0 0 18px;
+          justify-content: flex-start !important;
+          text-align: left !important;
+        }
+
+        .ito-onion-page .ito-cta h2 > span {
+          display: block;
+        }
+
+        .ito-onion-page .ito-cta h2 > span + span {
+          margin-top: .35em;
         }
 
         .ito-onion-page .ito-cta-image {
@@ -5120,7 +5185,7 @@ export default function Onion() {
           }
 
           .ito-onion-page .ito-cta h2 {
-            font-size: clamp(38px, 11vw, 54px);
+            font-size: clamp(32px, 7.5vw, 46px);
           }
 
           .ito-onion-page .ito-actions {
@@ -5952,15 +6017,21 @@ export default function Onion() {
       {/* FAQ */}
       <section className="ito-section ito-dark" id="faq">
         <div className="ito-section-inner">
-          <div className="ito-eyebrow">Objection handling</div>
-          <h2 className="ito-display ito-section-title">Buyer Questions and Objection Handling</h2>
+          <div className="ito-eyebrow">Buyer FAQs</div>
+          <h2 className="ito-display ito-section-title">Your Onion Supply Questions, Answered</h2>
 
           <div className="ito-faq">
-            {FAQS.map((faq, i) => (
-              <div className="ito-faq-item" key={i}>
-                <div className="ito-faq-q">Q. {faq.q}</div>
+            {FAQS.map((faq) => (
+              <details className="ito-faq-item" key={faq.q}>
+                <summary className="ito-faq-q">
+                  <span>{faq.q}</span>
+                  <svg className="ito-faq-toggle" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M4 10h12" />
+                    <path className="ito-faq-toggle-vertical" d="M10 4v12" />
+                  </svg>
+                </summary>
                 <div className="ito-faq-a">A. {faq.a}</div>
-              </div>
+              </details>
             ))}
           </div>
         </div>
@@ -5969,9 +6040,12 @@ export default function Onion() {
       {/* FINAL CTA */}
       <section className="ito-section ito-cta">
         <div className="ito-section-inner ito-cta-inner">
-          <div>
-            <div className="ito-eyebrow">Final conversion</div>
-            <h2 className="ito-display">Share Your Requirement. Receive a Commercial Supply Plan.</h2>
+          <div className="ito-cta-heading">
+            <div className="ito-eyebrow">Request a Quote</div>
+            <h2 className="ito-display">
+              <span>Share Your Requirement.</span>{' '}
+              <span>Receive a Commercial Supply Plan.</span>
+            </h2>
           </div>
 
           <div>
@@ -5981,15 +6055,15 @@ export default function Onion() {
             </p>
             <div className="ito-actions">
               <button
-                className="ito-button"
+                className="ito-button ito-button-primary"
                 type="button"
-                onClick={openRequirementBuilder}
+                onClick={() => openRequirementBuilder()}
               >
                 Request Bulk Quote
               </button>
-              <a className="ito-button secondary" href="#rfq">
+              <button className="ito-button secondary" type="button" onClick={() => openRequirementBuilder()}>
                 Request Export SCO
-              </a>
+              </button>
               <a
                 className="ito-button secondary ito-whatsapp-button"
                 href="https://wa.me/9973218366?text=Hello%20India%20Trade%20Overseas.%20I%20need%20bulk%20onion%20supply.%20Please%20share%20availability%20and%20quotation%20requirements."
