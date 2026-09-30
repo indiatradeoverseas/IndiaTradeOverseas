@@ -611,7 +611,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('OVERVIEW')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'OVERVIEW'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -623,7 +623,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('ATTENDANCE')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'ATTENDANCE'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -635,7 +635,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('FILES')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'FILES'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -647,7 +647,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('JOBS')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'JOBS'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -659,7 +659,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('CHAT')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'CHAT'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -671,7 +671,7 @@ export default function ItDashboard() {
               onClick={() => setActiveTab('TICKETS')}
               className={`px-3.5 py-2 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-2 border whitespace-nowrap ${
                 activeTab === 'TICKETS'
-                  ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
                   : 'bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border-[var(--crm-line)] hover:bg-[var(--crm-line)]'
               }`}
             >
@@ -687,13 +687,13 @@ export default function ItDashboard() {
           <motion.div variants={blockVariants} className="space-y-6">
             
             {/* Quick Action Banner */}
-            <div className="bg-gradient-to-r from-cyan-950/60 via-slate-900 to-indigo-950/60 border border-cyan-500/30 p-5 rounded-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-sm flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-white uppercase flex items-center gap-2">
-                  <FiZap className="text-cyan-400 animate-pulse" />
+                <h3 className="text-base font-bold text-[var(--crm-heading)] uppercase flex items-center gap-2">
+                  <FiZap className="text-blue-500 animate-pulse" />
                   Quick IT Operations Console
                 </h3>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[var(--crm-ink-soft)]">
                   Manage biometric check-ins, share IT files, publish tech careers, and communicate directly with management.
                 </p>
               </div>
