@@ -743,27 +743,27 @@ export default function TrialDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'ALL'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
+                ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
           >
             All Dates
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'TODAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
+                ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
           >
             Today
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition cursor-pointer ${dateFilterMode === 'YESTERDAY'
-                ? 'bg-teal-600 text-white font-black shadow'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
+                ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
           >
             Yesterday
@@ -1804,23 +1804,23 @@ export default function TrialDashboard() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
             >
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
-                  <FiFileText className="text-teal-400" size={16} /> Upload LOI Document (Letter of Intent)
+                <h3 className="text-base font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+                  <FiFileText className="text-teal-400" size={18} /> Upload LOI Document (Letter of Intent)
                 </h3>
-                <button onClick={() => setShowLOIModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
+                <button onClick={() => setShowLOIModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
               </div>
 
               <form onSubmit={handleLOISubmit} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
                   <select
                     required
                     value={loiTargetLeadId}
                     onChange={(e) => setLoiTargetLeadId(e.target.value)}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] font-sans transition"
                   >
                     <option value="">-- Choose Assigned Lead --</option>
                     {myLeads.map(l => (
@@ -1832,39 +1832,39 @@ export default function TrialDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Attach LOI Document (PDF / Image) *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Select LOI Document File * (PDF, DOCX, IMAGE)</label>
                   <input
                     type="file"
                     required
                     accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                     onChange={(e) => setLoiFile(e.target.files[0])}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2 rounded text-[10px] cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-xs text-[var(--crm-heading)] font-sans cursor-pointer"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Document Remarks / Notes</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Optional Notes / Buyer Terms</label>
                   <textarea
                     rows={3}
                     value={loiNotes}
                     onChange={(e) => setLoiNotes(e.target.value)}
                     placeholder="Enter LOI terms or notes..."
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={uploadingLOI}
-                    className="flex-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl text-white bg-teal-600 hover:bg-teal-500 transition cursor-pointer disabled:opacity-50"
                   >
-                    {uploadingLOI ? 'Uploading LOI...' : 'Upload LOI Document'}
+                    {uploadingLOI ? 'Uploading LOI...' : 'Confirm Upload LOI'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowLOIModal(false)}
-                    className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
+                    className="py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer"
                   >
                     Cancel
                   </button>

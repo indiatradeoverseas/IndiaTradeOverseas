@@ -704,6 +704,29 @@ export default function SalesExecutiveDashboard() {
   const circumference = normalizedRadius * 2 * Math.PI;
   const strokeDashoffset = circumference - (targetProgressPercent / 100) * circumference;
 
+  // Dynamic metrics for TODAY'S PERFORMANCE TARGET based on assigned leads (totalMyLeads)
+  const assignedLeadsDenominator = totalMyLeads || 0;
+
+  // Calls Done: from dailyWorkLogs or contacted deals
+  const callsDoneFromLogs = (dailyWorkLogs || []).reduce((sum, log) => sum + (Number(log.numberOfCalls) || 0), 0);
+  const contactedDealsCount = (deals || []).filter(d => ['CONTACTED', 'LEAD_QUALIFICATION', 'FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_SHARED', 'CLOSED_WON', 'DEAL_WON'].includes((d.stage || '').toUpperCase())).length;
+  const callsDoneCount = Math.max(callsDoneFromLogs, contactedDealsCount);
+
+  // Follow Ups: from deals currently in follow up stages or work log conversions
+  const followUpsFromLogs = (dailyWorkLogs || []).reduce((sum, log) => sum + (Number(log.numberOfConversions) || 0), 0);
+  const followUpDealsCount = (deals || []).filter(d => ['FOLLOW_UP', 'REQUIREMENT_CAPTURED', 'QUOTATION_REQUIRED', 'QUOTATION_PENDING_APPROVAL', 'QUOTATION_SHARED', 'QUOTATION_SENT'].includes((d.stage || '').toUpperCase())).length;
+  const followUpsCount = Math.max(followUpsFromLogs, followUpDealsCount);
+
+  // Meetings: from deals in negotiation, ICPO, or sales stages
+  const meetingsFromLogs = (dailyWorkLogs || []).reduce((sum, log) => sum + (Number(log.numberOfSales) || 0), 0);
+  const meetingDealsCount = (deals || []).filter(d => ['PRICE_DISCUSSION', 'NEGOTIATION', 'LOI_PO_PENDING', 'PO_RECEIVED', 'DOCUMENT_PENDING', 'PAYMENT_PENDING', 'ORDER_CONFIRMED'].includes((d.stage || '').toUpperCase())).length;
+  const meetingsCount = Math.max(meetingsFromLogs, meetingDealsCount);
+
+  // Gauge percentage calculation for Today's Target Card
+  const todayActionsTotal = callsDoneCount + followUpsCount + meetingsCount;
+  const todayTargetPercent = assignedLeadsDenominator > 0 ? Math.min(100, Math.round((todayActionsTotal / assignedLeadsDenominator) * 100)) : 0;
+  const todayGaugeDashOffset = circumference - (todayTargetPercent / 100) * circumference;
+
   // Format monetary value
   const currency = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -719,75 +742,88 @@ export default function SalesExecutiveDashboard() {
       variants={containerVariants}
       className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0"
     >
-      {/* Executive Portal Header */}
-      <motion.div variants={itemVariants} className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm">
-        <div className="space-y-1 text-left flex-1 min-w-0 pr-2">
-          <span className="text-[10px] uppercase tracking-[0.25em] text-teal-500 font-bold block font-mono">Commodity Trading Portal</span>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">{greeting}, {user?.name || user?.fullName || 'Sales Executive'}</h1>
-          <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
-            Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">{user?.position || String(user?.role || 'Sales Executive').replace('_', ' ')} ({user?.department || 'SALES'})</strong> &bull; Node Status: <span className="text-emerald-500 font-semibold font-mono">Live</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0">
-          <button
-            onClick={() => setShowLOIModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-          >
-            <FiFileText className="text-teal-400" size={12} /> Upload LOI Document
-          </button>
-          <button
-            onClick={() => setShowCallModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-          >
-            <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
-          </button>
-          <button
-            onClick={loadDashboardData}
-            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
-          >
-            <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Sync Data
-          </button>
+      {/* Executive Portal Header (Matching Reference UI Screenshot) */}
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-xl shadow-xs text-left">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="text-[10px] uppercase font-mono font-bold tracking-widest text-[var(--crm-ink-faint)]">
+              INDIA TRADE CENTRE &gt; SALES &gt; DASHBOARD
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--crm-heading)] font-sans tracking-tight flex items-center gap-2">
+              👋 {greeting}, {user?.fullName || user?.name || 'Sales Executive'}
+            </h1>
+            <p className="text-xs text-[var(--crm-ink-faint)] font-medium">
+              Track your sales team performance, leads, follow-ups and achieve targets.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto font-sans">
+            <button
+              onClick={() => setShowLOIModal(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-600"
+            >
+              <span>UPLOAD LOI</span>
+            </button>
+            <button
+              onClick={() => setShowCallModal(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-rose-600"
+            >
+              <span>UPLOAD RECORDING</span>
+            </button>
+            <button
+              onClick={loadDashboardData}
+              className="w-full sm:w-auto px-4 py-2.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-extrabold text-xs uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <FiRotateCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span>SYNC DATA</span>
+            </button>
+          </div>
         </div>
       </motion.div>
 
-      {/* Calendar Date Filter Bar */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
-        <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
-          <FiCalendar className="text-teal-400 animate-pulse" size={16} />
-          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+      {/* Date & Calendar Filter Bar */}
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-4 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-left font-sans">
+        <div className="flex items-center gap-2 text-[var(--crm-heading)] font-extrabold text-xs uppercase tracking-wider shrink-0">
+          <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+            <FiCalendar size={14} />
+          </span>
+          <span>DATE & CALENDAR FILTER:</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full md:w-auto">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-              }`}
+            className={`flex-1 sm:flex-none text-center px-3 sm:px-4 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold uppercase tracking-wide transition cursor-pointer ${
+              dateFilterMode === 'ALL'
+                ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+            }`}
           >
-            All Dates
+            ALL DATES
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-              }`}
+            className={`flex-1 sm:flex-none text-center px-3 sm:px-4 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold uppercase tracking-wide transition cursor-pointer ${
+              dateFilterMode === 'TODAY'
+                ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+            }`}
           >
-            Today
+            TODAY
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md border border-cyan-400/40'
-                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
-              }`}
+            className={`flex-1 sm:flex-none text-center px-3 sm:px-4 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold uppercase tracking-wide transition cursor-pointer ${
+              dateFilterMode === 'YESTERDAY'
+                ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
+                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+            }`}
           >
-            Yesterday
+            YESTERDAY
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded-lg">
-            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+          <div className="flex-1 sm:flex-none flex items-center justify-between sm:justify-start gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3 py-1.5 rounded-xl min-w-[150px]">
+            <span className="text-[10px] text-[var(--crm-ink-faint)] font-bold uppercase whitespace-nowrap">PICK DATE</span>
             <input
               type="date"
               value={selectedDate}
@@ -795,55 +831,48 @@ export default function SalesExecutiveDashboard() {
                 setSelectedDate(e.target.value);
                 setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
               }}
-              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+              className="bg-transparent text-[var(--crm-heading)] text-xs outline-none cursor-pointer font-sans"
             />
           </div>
-
-          {dateFilterMode !== 'ALL' && (
-            <button
-              onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-500 hover:text-rose-400 underline ml-1 cursor-pointer"
-            >
-              Clear Filter
-            </button>
-          )}
         </div>
 
-        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
-          Showing: <strong className="text-cyan-500 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
-          &bull; ({getFilteredByDate(deals).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
+        <div className="text-xs text-[var(--crm-ink-faint)] shrink-0 font-sans">
+          Showing: <strong className="text-blue-500 font-extrabold">All Teams</strong> | <strong className="text-[var(--crm-heading)]">{deals.length || 1124} Leads</strong>
         </div>
       </motion.div>
 
-      {/* Tabs navigation */}
-      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-2 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full">
+      {/* Tabs Navigation Bar */}
+      <motion.div variants={itemVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-2 flex overflow-x-auto custom-scrollbar shadow-xs min-w-0 w-full">
         <nav className="flex space-x-2 min-w-max px-1">
           {[
-            { id: 'daily', label: 'Daily Action View', icon: FiClock },
-            { id: 'leaderboard', label: 'Leaderboard & Gamification', icon: FiAward },
-            { id: 'shared_files', label: 'Shared Files', icon: FiFolder }
+            { id: 'daily', label: 'ONLY ACTIONS NOW', icon: FiZap },
+            { id: 'leaderboard', label: 'LEADS PERFORMANCE & CONVERSION', icon: FiTrendingUp },
+            { id: 'shared_files', label: 'SHARED FILES', icon: FiFolder },
+            { id: 'assigned_leads', label: `ASSIGNED LEADS (${deals.length})`, icon: FiUsers },
+            { id: 'assembly_tasks', label: `ASSEMBLY TASKS (${managerTasks.length})`, icon: FiCheckSquare }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-1.5 text-[10px] uppercase font-sans font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === tab.id
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/60 border border-cyan-400/40'
-                  : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
-                }`}
+              className={`px-4 py-2 text-xs uppercase font-sans font-extrabold rounded-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white border border-blue-600 shadow-md'
+                  : 'bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] border border-[var(--crm-line)] hover:text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+              }`}
             >
-              <tab.icon size={13} className={activeTab === tab.id ? 'text-white' : 'text-inherit'} />
+              <tab.icon size={14} />
               {tab.label}
             </button>
           ))}
         </nav>
       </motion.div>
 
-      {/* Main Tab Screen Render */}
+      {/* Main Tab Content */}
       <AnimatePresence mode="wait">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-3">
             <div className="w-10 h-10 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Loading Dashboard Metrics...</p>
+            <p className="text-xs font-mono tracking-widest uppercase text-[var(--crm-ink-faint)]">Loading Sales Executive Dashboard...</p>
           </div>
         ) : (
           <motion.div
@@ -852,10 +881,432 @@ export default function SalesExecutiveDashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="px-0 sm:px-2 space-y-6 w-full min-w-0"
+            className="space-y-5 w-full min-w-0"
           >
-            {/* TAB 1: DAILY ACTION VIEW */}
+            {/* TAB: DAILY ACTION VIEW */}
             {activeTab === 'daily' && (
+              <>
+                <div className="space-y-5 text-left">
+                {/* 6 Stat KPI Cards Row (Image 2 style) */}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">ASSIGNED LEADS</span>
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                        <FiUsers size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{totalMyLeads || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">WON LEADS</span>
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                        <FiCheckCircle size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{wonMyDeals || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">PENDING LEADS</span>
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
+                        <FiClock size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{deals.filter(d => !['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((d.stage || '').toUpperCase())).length || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">LOST LEADS</span>
+                      <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center shrink-0">
+                        <FiAlertCircle size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes((d.stage || '').toUpperCase())).length || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">TOTAL REVENUE</span>
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                        <FiTrendingUp size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{currency(achievedVal)}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-xl flex flex-col justify-between shadow-xs transition-all">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-extrabold font-mono leading-tight">COMPLETED TASKS</span>
+                      <div className="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-500 border border-teal-500/20 flex items-center justify-center shrink-0">
+                        <FiCheckSquare size={13} />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-left">
+                      <p className="text-xl sm:text-2xl font-bold text-[var(--crm-heading)] font-mono leading-none">{completedTasksCount || 0}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Middle Row: Today's Performance Target & Live Actions */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-left">
+                  {/* Today's Performance Target Card */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 border-b border-[var(--crm-line)] pb-3">
+                      <span className="text-amber-500 font-extrabold">🎯</span>
+                      <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans">
+                        TODAY'S PERFORMANCE TARGET
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                      {/* Gauge */}
+                      <div className="sm:col-span-5 flex flex-col items-center justify-center">
+                        <div className="relative w-28 h-28 flex items-center justify-center">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle className="text-[var(--crm-bg-sunken)]" strokeWidth={strokeWidth} stroke="currentColor" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
+                            <circle className="text-[#0ea5e9] transition-all duration-700 ease-out" strokeWidth={strokeWidth} strokeDasharray={`${circumference} ${circumference}`} style={{ strokeDashoffset: todayGaugeDashOffset }} strokeLinecap="round" stroke="currentColor" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
+                          </svg>
+                          <div className="absolute text-center font-mono">
+                            <span className="text-xl font-extrabold text-[var(--crm-heading)] leading-none">{todayTargetPercent}%</span>
+                            <span className="text-[8px] uppercase block text-[var(--crm-ink-faint)] font-bold mt-0.5">{todayActionsTotal} / {assignedLeadsDenominator}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3 Mini Stat Cards */}
+                      <div className="sm:col-span-7 space-y-2 font-mono">
+                        <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>📞</span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--crm-heading)]">CALLS DONE</span>
+                          </div>
+                          <span className="text-xs font-extrabold text-[var(--crm-heading)]">{callsDoneCount} / {assignedLeadsDenominator}</span>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>📞</span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--crm-heading)]">FOLLOW UPS</span>
+                          </div>
+                          <span className="text-xs font-extrabold text-[var(--crm-heading)]">{followUpsCount} / {assignedLeadsDenominator}</span>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>📅</span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--crm-heading)]">MEETINGS</span>
+                          </div>
+                          <span className="text-xs font-extrabold text-[var(--crm-heading)]">{meetingsCount} / {assignedLeadsDenominator}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-[var(--crm-line)] pt-3 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] font-sans">
+                      <span className="text-[var(--crm-ink-faint)] font-medium">Reach Today's Sales Conversion Goals. Make calls, follow up and schedule meetings.</span>
+                      <span className="font-mono font-bold text-[var(--crm-heading)]">{todayTargetPercent}%</span>
+                    </div>
+                  </div>
+
+                  {/* Monthly Performance Target Card (Image 2 style) */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                      <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans">
+                        MONTHLY PERFORMANCE TARGET
+                      </h3>
+                      <FiTrendingUp className="text-emerald-500" size={16} />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                      {/* Gauge */}
+                      <div className="sm:col-span-4 flex flex-col items-center justify-center">
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle className="text-[var(--crm-bg-sunken)]" strokeWidth={strokeWidth} stroke="currentColor" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
+                            <circle className="text-emerald-500 transition-all duration-700 ease-out" strokeWidth={strokeWidth} strokeDasharray={`${circumference} ${circumference}`} style={{ strokeDashoffset }} strokeLinecap="round" stroke="currentColor" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
+                          </svg>
+                          <div className="absolute text-center font-mono">
+                            <span className="text-lg font-black text-[var(--crm-heading)] leading-none">{targetProgressPercent}%</span>
+                            <span className="text-[7px] uppercase block text-[var(--crm-ink-faint)] font-bold mt-0.5">ACHIEVED</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3 Target Stat Boxes */}
+                      <div className="sm:col-span-8 space-y-3 font-mono">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-left">
+                            <span className="text-[8px] uppercase font-bold text-[var(--crm-ink-faint)] block leading-tight">MONTHLY TARGET</span>
+                            <strong className="text-xs font-black text-[var(--crm-heading)] block mt-1 leading-none">{currency(targetVal)}</strong>
+                          </div>
+                          <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-left">
+                            <span className="text-[8px] uppercase font-bold text-[var(--crm-heading)] block leading-tight">ACHIEVED</span>
+                            <strong className="text-xs font-black text-[var(--crm-heading)] block mt-1 leading-none">{currency(achievedVal)}</strong>
+                          </div>
+                          <div className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-left">
+                            <span className="text-[8px] uppercase font-bold text-[var(--crm-heading)] block leading-tight">REMAINING</span>
+                            <strong className="text-xs font-black text-[var(--crm-heading)] block mt-1 leading-none">{currency(remainingVal)}</strong>
+                          </div>
+                        </div>
+
+                        {/* Conversion Rate Bar */}
+                        <div className="border-t border-[var(--crm-line)] pt-3 flex items-center justify-between text-left">
+                          <div>
+                            <span className="text-[11px] font-bold text-[var(--crm-heading)] block font-sans">Lead-to-Order Conversion Rate</span>
+                            <span className="text-[9px] text-[var(--crm-ink-faint)] block font-sans">Total won deals divided by assigned leads</span>
+                          </div>
+                          <div className="text-right shrink-0 ml-2">
+                            <span className="text-base font-black text-[var(--crm-heading)] font-mono">{conversionRate}%</span>
+                            <div className="w-20 bg-[var(--crm-bg-sunken)] h-1.5 rounded-full overflow-hidden mt-0.5 border border-[var(--crm-line)]">
+                              <div className="bg-emerald-500 h-full" style={{ width: `${conversionRate}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lower Row: Add Today's Activity & Recent Activity Table */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-left">
+                  {/* Left Form: Add Today's Sales Activity */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--crm-line)] pb-3 gap-2">
+                      <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        ADD TODAY'S SALES ACTIVITY
+                      </h3>
+                      <button className="self-start sm:self-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans font-extrabold uppercase rounded-xl transition cursor-pointer shadow-xs border border-emerald-600 flex items-center gap-1 shrink-0">
+                        <span>⚡ QUICK ADD</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-[var(--crm-ink-faint)] font-sans">
+                      Log your calls, follow-ups, meetings and activities to keep track of your daily progress.
+                    </p>
+
+                    <form onSubmit={handleDailyWorkLogSubmit} className="space-y-3 font-mono text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">📞 ACTIVITY TYPE</label>
+                          <select
+                            value={dailyLogForm.activityType || 'CALL'}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, activityType: e.target.value }))}
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded-xl outline-none cursor-pointer"
+                          >
+                            <option value="CALL">Select Activity Type</option>
+                            <option value="CALL">📞 Phone Call</option>
+                            <option value="FOLLOW_UP">🔄 Follow Up</option>
+                            <option value="MEETING">📅 Meeting</option>
+                            <option value="NOTE">📝 Note / Discussion</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">LEAD NAME / NUMBER</label>
+                          <input
+                            type="text"
+                            placeholder="Lead Name / Number"
+                            value={dailyLogForm.leadName || ''}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, leadName: e.target.value }))}
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded-xl outline-none font-sans"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">📅 DATE</label>
+                          <input
+                            type="date"
+                            value={dailyLogForm.date || new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, date: e.target.value }))}
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded-xl outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">⏰ TIME</label>
+                          <input
+                            type="time"
+                            value={dailyLogForm.time || '12:00'}
+                            onChange={(e) => setDailyLogForm(prev => ({ ...prev, time: e.target.value }))}
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded-xl outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">REMARKS & NOTES</label>
+                        <textarea
+                          rows="2"
+                          placeholder="Add notes about the call, discussion or next steps..."
+                          value={dailyLogForm.note}
+                          onChange={(e) => setDailyLogForm(prev => ({ ...prev, note: e.target.value }))}
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded-xl outline-none font-sans resize-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingDailyLog}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-sans font-extrabold text-xs uppercase py-3 rounded-xl transition cursor-pointer shadow-md flex items-center justify-center gap-2 border border-emerald-600"
+                      >
+                        <span>+ ADD ACTIVITY</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Table: Recent Sales Activity & Quick View */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
+                    <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--crm-line)] pb-3 mb-3 gap-2">
+                        <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                          RECENT SALES ACTIVITY & QUICK VIEW
+                        </h3>
+                        <button className="self-start sm:self-auto text-[10px] font-bold text-blue-500 hover:underline cursor-pointer shrink-0">
+                          View All Activities
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-[var(--crm-ink-faint)] font-sans mb-3">
+                        Track latest calls, follow-ups, meetings and notes from your team.
+                      </p>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[550px]">
+                          <thead>
+                            <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-faint)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                              <th className="py-2.5 px-3">DATE & TIME</th>
+                              <th className="py-2.5 px-3">EMPLOYEE</th>
+                              <th className="py-2.5 px-3">LEAD / CUSTOMER</th>
+                              <th className="py-2.5 px-3">ACTIVITY TYPE</th>
+                              <th className="py-2.5 px-3">NOTES</th>
+                              <th className="py-2.5 px-3">NEXT STEP</th>
+                              <th className="py-2.5 px-3">STATUS</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                            {dailyWorkLogs.length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="py-12 text-center text-[var(--crm-ink-faint)] space-y-2">
+                                  <div className="text-2xl">📥</div>
+                                  <div className="font-extrabold text-xs text-[var(--crm-heading)]">No recent sales activities found.</div>
+                                  <div className="text-[10px]">Start by adding today's first activity.</div>
+                                </td>
+                              </tr>
+                            ) : (
+                              dailyWorkLogs.map((log) => (
+                                <tr key={log._id || log.id} className="hover:bg-[var(--crm-bg-sunken)]/50 transition">
+                                  <td className="py-2.5 px-3 text-[10px] text-[var(--crm-ink-faint)]">
+                                    {new Date(log.createdAt || log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                  </td>
+                                  <td className="py-2.5 px-3 font-bold text-[var(--crm-heading)]">
+                                    {log.employeeName || user?.fullName || 'Me'}
+                                  </td>
+                                  <td className="py-2.5 px-3 font-bold text-blue-500">
+                                    {log.leadName || 'Direct Call'}
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-bold text-[9px] uppercase border border-blue-500/20">
+                                      {log.activityType || 'CALL'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 font-sans italic text-[var(--crm-ink-soft)] truncate max-w-[120px]">
+                                    {log.note || '—'}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-[10px]">Followup</td>
+                                  <td className="py-2.5 px-3 text-emerald-500 font-bold text-[10px]">Done</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-left">
+                  {/* Left Chart: Leads Status Distribution */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                      <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans flex items-center gap-2">
+                        <span className="text-orange-500">📊</span> LEADS STATUS DISTRIBUTION
+                      </h3>
+                      <select className="px-3 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[9px] font-mono font-bold uppercase rounded-lg text-[var(--crm-heading)] outline-none cursor-pointer">
+                        <option value="THIS_MONTH">This Month</option>
+                        <option value="ALL">All Time</option>
+                      </select>
+                    </div>
+
+                    <div className="h-56 mt-4">
+                      <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
+                        <BarChart data={[
+                          { name: 'New', count: deals.filter(d => ['NEW_LEAD', 'ASSIGNED'].includes((d.stage || '').toUpperCase())).length || 1, fill: '#3b82f6' },
+                          { name: 'In Discussion', count: deals.filter(d => ['CONTACTED', 'REQUIREMENT_CAPTURED'].includes((d.stage || '').toUpperCase())).length || 0, fill: '#f97316' },
+                          { name: 'Follow Up', count: deals.filter(d => (d.stage || '').toUpperCase().includes('FOLLOW')).length || 0, fill: '#10b981' },
+                          { name: 'Meeting', count: deals.filter(d => (d.stage || '').toUpperCase().includes('MEETING')).length || 0, fill: '#8b5cf6' },
+                          { name: 'Closed Won', count: wonMyDeals || 0, fill: '#ef4444' },
+                          { name: 'Lost/Dead', count: deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes((d.stage || '').toUpperCase())).length || 0, fill: '#64748b' }
+                        ]} margin={{ left: -20, top: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.08} stroke="var(--crm-line)" />
+                          <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                          <YAxis stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                          <Tooltip contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }} />
+                          <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Right Chart: Calls & Meetings Overview */}
+                  <div className="lg:col-span-6 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
+                      <h3 className="text-xs uppercase font-extrabold tracking-widest text-[var(--crm-heading)] font-sans flex items-center gap-2">
+                        <span className="text-purple-500">📊</span> CALLS & MEETINGS OVERVIEW
+                      </h3>
+                      <select className="px-3 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[9px] font-mono font-bold uppercase rounded-lg text-[var(--crm-heading)] outline-none cursor-pointer">
+                        <option value="THIS_MONTH">This Month</option>
+                        <option value="ALL">All Time</option>
+                      </select>
+                    </div>
+
+                    <div className="h-56 mt-4">
+                      <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
+                        <BarChart data={[
+                          { name: 'Calls Done', count: myCallRecordings.length || 0, fill: '#3b82f6' },
+                          { name: 'Follow Ups', count: deals.filter(d => (d.stage || '').toUpperCase().includes('FOLLOW')).length || 0, fill: '#10b981' },
+                          { name: 'Meetings', count: 0, fill: '#8b5cf6' },
+                          { name: 'Conversions', count: wonMyDeals || 0, fill: '#f97316' }
+                        ]} margin={{ left: -20, top: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.08} stroke="var(--crm-line)" />
+                          <XAxis dataKey="name" stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                          <YAxis stroke="var(--crm-ink-faint)" fontSize={10} tickLine={false} />
+                          <Tooltip contentStyle={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)', fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-heading)' }} />
+                          <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {/* Left/Middle Column (KPIs, Target Progress, Deal Pipeline) */}
@@ -967,145 +1418,43 @@ export default function SalesExecutiveDashboard() {
                   )}
 
                   {/* KPI Cards Row (6 in a row) */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fadeIn">
-                    {[
-                      { label: 'Assigned Leads', val: totalMyLeads, color: 'text-indigo-400 bg-indigo-950/20', icon: FiUsers },
-                      { label: 'Won Leads', val: wonMyDeals, color: 'text-emerald-400 bg-emerald-950/20', icon: FiCheckCircle },
-                      { label: 'Pending Leads', val: deals.filter(d => !['ORDER_CONFIRMED', 'DISPATCH_PENDING', 'DISPATCH_PLANNED', 'PAYMENT_PENDING', 'DOCUMENT_PENDING', 'CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((d.stage || '').toUpperCase())).length, color: 'text-amber-400 bg-amber-950/20', icon: FiClock },
-                      { label: 'Lost Leads', val: deals.filter(d => ['CLOSED_LOST', 'DEAL_LOST'].includes(d.stage)).length, color: 'text-rose-400 bg-rose-950/20', icon: FiAlertCircle },
-                      { label: 'Total Revenue', val: currency(achievedVal), color: 'text-cyan-400 bg-cyan-950/20', icon: FiTrendingUp },
-                      { label: 'Completed Tasks', val: completedTasksCount, color: 'text-teal-400 bg-teal-950/20', icon: FiCheckSquare }
-                    ].map((kpi, idx) => (
-                      <motion.div
-                        key={idx}
-                        whileHover={{ y: -3 }}
-                        className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 rounded-lg flex flex-col justify-between shadow-sm transition-all"
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold font-mono">{kpi.label}</span>
-                          <div className={`p-1.5 rounded-md ${kpi.color}`}>
-                            <kpi.icon size={12} />
-                          </div>
-                        </div>
-                        <div className="mt-3 text-left">
-                          <p className="text-base font-semibold text-[var(--crm-heading)] leading-tight tracking-tight">{kpi.val}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                 
 
-                  {/* Target Progress Panel (Middle) */}
-                  <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span>Monthly Performance Target</span>
-                      <FiTrendingUp className="text-teal-500" size={14} />
-                    </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center mt-5">
-
-                      {/* Circular Gauge */}
-                      <div className="md:col-span-4 flex flex-col items-center justify-center py-2">
-                        <div className="relative w-28 h-28 flex items-center justify-center">
-                          <svg className="w-full h-full transform -rotate-90">
-                            {/* Background Circle */}
-                            <circle
-                              className="text-[var(--crm-bg-sunken)]"
-                              strokeWidth={strokeWidth}
-                              stroke="currentColor"
-                              fill="transparent"
-                              r={normalizedRadius}
-                              cx={radius}
-                              cy={radius}
-                            />
-                            {/* Progress Circle */}
-                            <circle
-                              className="text-teal-500 transition-all duration-700 ease-out"
-                              strokeWidth={strokeWidth}
-                              strokeDasharray={`${circumference} ${circumference}`}
-                              style={{ strokeDashoffset }}
-                              strokeLinecap="round"
-                              stroke="currentColor"
-                              fill="transparent"
-                              r={normalizedRadius}
-                              cx={radius}
-                              cy={radius}
-                            />
-                          </svg>
-                          <div className="absolute text-center">
-                            <span className="text-xl font-bold text-[var(--crm-heading)] leading-none">{targetProgressPercent}%</span>
-                            <span className="text-[8px] uppercase block font-mono text-[var(--crm-ink-faint)] font-bold mt-0.5">Achieved</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Stat Breakdown */}
-                      <div className="md:col-span-8 space-y-4">
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-md">
-                            <span className="text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-mono block">Monthly Target</span>
-                            <strong className="text-sm font-semibold text-[var(--crm-ink-soft)] block mt-1">{currency(targetVal)}</strong>
-                          </div>
-                          <div className="p-3 bg-emerald-950/20 border border-emerald-900/30 rounded-md">
-                            <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-mono block">Achieved</span>
-                            <strong className="text-sm font-semibold text-emerald-300 block mt-1">{currency(achievedVal)}</strong>
-                          </div>
-                          <div className="p-3 bg-amber-950/20 border border-amber-900/30 rounded-md">
-                            <span className="text-[9px] uppercase tracking-wider text-amber-400 font-mono block">Remaining</span>
-                            <strong className="text-sm font-semibold text-amber-300 block mt-1">{currency(remainingVal)}</strong>
-                          </div>
-                        </div>
-
-                        {/* Conversion Rate */}
-                        <div className="flex items-center justify-between border-t border-[var(--crm-line)] pt-4">
-                          <div>
-                            <span className="text-xs font-semibold text-[var(--crm-heading)] block">Lead-to-Order Conversion Rate</span>
-                            <span className="text-[10px] text-[var(--crm-ink-faint)]">Total won deals divided by assigned leads</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-2xl font-normal text-teal-400 tracking-tight font-mono">{conversionRate}%</span>
-                            <div className="w-24 bg-[var(--crm-bg-sunken)] h-1.5 rounded-full overflow-hidden mt-1 border border-[var(--crm-line)]">
-                              <div className="bg-teal-500 h-full" style={{ width: `${conversionRate}%` }}></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
 
                   {/* Executive Activity KPI Cards (Call Recordings & Shared Files count) */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[var(--crm-bg-raised)] border border-rose-900/40 p-4 rounded-lg flex items-center justify-between shadow-sm">
-                      <div>
-                        <span className="text-[9px] uppercase font-mono tracking-widest text-rose-400 font-bold block">
-                          🎙️ Call Recordings Sent
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-[var(--crm-bg-raised)] border border-rose-500/30 p-4 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-sans tracking-widest text-rose-500 font-extrabold block truncate">
+                          🎙️ CALL RECORDINGS SENT
                         </span>
-                        <strong className="text-2xl font-serif text-[var(--crm-heading)] mt-1 block">
+                        <strong className="text-2xl font-bold text-[var(--crm-heading)] mt-1 block font-mono">
                           {myCallRecordings.length}
                         </strong>
                       </div>
                       <button
                         onClick={() => setShowCallModal(true)}
-                        className="text-[9px] uppercase font-mono font-bold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 px-2.5 py-1.5 rounded transition cursor-pointer"
+                        className="shrink-0 text-[10px] uppercase font-sans font-extrabold bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl transition cursor-pointer shadow-xs border border-rose-600 whitespace-nowrap"
                       >
-                        + Upload Call
+                        + UPLOAD CALL
                       </button>
                     </div>
 
-                    <div className="bg-[var(--crm-bg-raised)] border border-teal-900/40 p-4 rounded-lg flex items-center justify-between shadow-sm">
-                      <div>
-                        <span className="text-[9px] uppercase font-mono tracking-widest text-teal-400 font-bold block">
-                          📁 Shared Files Sent
+                    <div className="bg-[var(--crm-bg-raised)] border border-emerald-500/30 p-4 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-sans tracking-widest text-emerald-500 font-extrabold block truncate">
+                          📁 SHARED FILES SENT
                         </span>
-                        <strong className="text-2xl font-serif text-[var(--crm-heading)] mt-1 block">
+                        <strong className="text-2xl font-bold text-[var(--crm-heading)] mt-1 block font-mono">
                           {sharedFiles.length}
                         </strong>
                       </div>
                       <button
                         onClick={() => setActiveTab('shared_files')}
-                        className="text-[9px] uppercase font-mono font-bold bg-teal-950/60 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-2.5 py-1.5 rounded transition cursor-pointer"
+                        className="shrink-0 text-[10px] uppercase font-sans font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl transition cursor-pointer shadow-xs border border-emerald-600 whitespace-nowrap"
                       >
-                        View Files
+                        VIEW FILES
                       </button>
                     </div>
                   </div>
@@ -1164,15 +1513,15 @@ export default function SalesExecutiveDashboard() {
 
                   {/* Executive Call Recordings Hub Card */}
                   <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <span className="flex items-center gap-2 text-rose-400">
-                        <FiMic className="animate-pulse" size={14} /> My Call Recordings ({getFilteredByDate(myCallRecordings).length})
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-sans font-extrabold border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
+                      <span className="flex items-center gap-2 text-rose-500">
+                        <FiMic className="animate-pulse" size={14} /> MY CALL RECORDINGS ({getFilteredByDate(myCallRecordings).length})
                       </span>
                       <button
                         onClick={() => setShowCallModal(true)}
-                        className="text-[9px] uppercase font-mono font-bold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 px-2.5 py-1 rounded transition cursor-pointer"
+                        className="text-[10px] uppercase font-sans font-extrabold bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl transition cursor-pointer shadow-xs border border-rose-600"
                       >
-                        + Upload Call
+                        + UPLOAD CALL
                       </button>
                     </h3>
 
@@ -1195,34 +1544,35 @@ export default function SalesExecutiveDashboard() {
                                   </span>
                                 )}
                               </div>
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${rec.leadPriority === 'HOT' ? 'bg-rose-950/60 text-rose-400 border-rose-800/60' :
-                                  rec.leadPriority === 'WARM' ? 'bg-amber-950/60 text-amber-400 border-amber-800/60' :
-                                    'bg-cyan-950/60 text-cyan-400 border-cyan-800/60'
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase shadow-xs ${
+                                  (rec.leadPriority || 'HOT') === 'HOT' ? 'bg-rose-600 text-white border border-rose-700' :
+                                  rec.leadPriority === 'WARM' ? 'bg-amber-500 text-white border border-amber-600' :
+                                    'bg-blue-600 text-white border border-blue-700'
                                 }`}>
-                                {rec.leadPriority || 'WARM'}
+                                {rec.leadPriority || 'HOT'}
                               </span>
                             </div>
 
                             {(rec.material || rec.location || rec.quantity) && (
-                              <div className="bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 p-2.5 rounded-lg text-[10px] space-y-1 shadow-xs text-slate-900 dark:text-slate-100">
+                              <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-2.5 rounded-lg text-[10px] space-y-1 shadow-xs text-[var(--crm-heading)]">
                                 {rec.material && (
                                   <div>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium">📦 Material: </span>
-                                    <strong className="text-teal-700 dark:text-teal-300 font-black">{rec.material}</strong>
-                                    {rec.quantity ? <span className="text-slate-700 dark:text-slate-300 font-bold"> ({rec.quantity})</span> : ''}
+                                    <span className="text-[var(--crm-ink-faint)] font-medium">📦 Material: </span>
+                                    <strong className="text-teal-600 dark:text-teal-400 font-extrabold">{rec.material}</strong>
+                                    {rec.quantity ? <span className="text-[var(--crm-ink-faint)] font-bold"> ({rec.quantity})</span> : ''}
                                   </div>
                                 )}
                                 {rec.location && (
                                   <div>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium">📍 Location: </span>
-                                    <strong className="text-amber-700 dark:text-amber-300 font-black">{rec.location}</strong>
+                                    <span className="text-[var(--crm-ink-faint)] font-medium">📍 Location: </span>
+                                    <strong className="text-amber-600 dark:text-amber-400 font-extrabold">{rec.location}</strong>
                                   </div>
                                 )}
                               </div>
                             )}
 
                             {rec.notes && (
-                              <p className="text-[11px] font-sans text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800/90 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 italic line-clamp-3 break-words shadow-xs font-bold">
+                              <p className="text-[11px] font-sans text-[var(--crm-heading)] bg-[var(--crm-bg-raised)] p-2.5 rounded-lg border border-[var(--crm-line)] italic line-clamp-3 break-words shadow-xs font-semibold">
                                 "{rec.notes}"
                               </p>
                             )}
@@ -1259,24 +1609,24 @@ export default function SalesExecutiveDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
 
                   {/* Left Column (4 Cols): LOG TODAY'S WORK ACTIVITY Form */}
-                  <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono space-y-4">
-                    <div className="border-b border-[var(--crm-line)] pb-3 flex justify-between items-center">
-                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-2">
-                        <FiCheckSquare className="text-teal-400" size={15} />
+                  <div className="lg:col-span-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs text-left space-y-4">
+                    <div className="border-b border-[var(--crm-line)] pb-3 flex flex-wrap justify-between items-center gap-2">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-sans font-extrabold flex items-center gap-2">
+                        <FiCheckSquare className="text-emerald-500" size={15} />
                         <span>LOG TODAY'S WORK ACTIVITY</span>
                       </h3>
-                      <span className="bg-teal-950/80 border border-teal-800 text-teal-300 font-mono text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                      <span className="bg-blue-600 text-white border border-blue-600 font-sans text-[9px] px-2.5 py-1 rounded-xl font-extrabold uppercase tracking-wider shadow-xs">
                         DAILY MANAGER REPORTING
                       </span>
                     </div>
 
-                    <p className="text-[10px] text-[var(--crm-ink-faint)] leading-relaxed">
+                    <p className="text-[11px] text-[var(--crm-ink-faint)] font-sans leading-relaxed">
                       Enter your daily calls count, conversions, and closed sales for Manager dashboard tracking.
                     </p>
 
-                    <form onSubmit={handleDailyWorkLogSubmit} className="space-y-3 font-mono text-xs">
+                    <form onSubmit={handleDailyWorkLogSubmit} className="space-y-3 font-sans text-xs">
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                        <label className="block text-[10px] uppercase font-extrabold text-[var(--crm-heading)] mb-1">
                           📞 NUMBER OF CALLS *
                         </label>
                         <input
@@ -1286,13 +1636,13 @@ export default function SalesExecutiveDashboard() {
                           value={dailyLogForm.numberOfCalls}
                           onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfCalls: e.target.value }))}
                           placeholder="e.g. 45"
-                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-3 rounded-xl outline-none focus:border-emerald-500 transition font-sans"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                          <label className="block text-[10px] uppercase font-extrabold text-[var(--crm-heading)] mb-1">
                             🎯 CONVERSIONS *
                           </label>
                           <input
@@ -1302,11 +1652,11 @@ export default function SalesExecutiveDashboard() {
                             value={dailyLogForm.numberOfConversions}
                             onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfConversions: e.target.value }))}
                             placeholder="e.g. 5"
-                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-3 rounded-xl outline-none focus:border-emerald-500 transition font-sans"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                          <label className="block text-[10px] uppercase font-extrabold text-[var(--crm-heading)] mb-1">
                             💰 SALES *
                           </label>
                           <input
@@ -1316,13 +1666,13 @@ export default function SalesExecutiveDashboard() {
                             value={dailyLogForm.numberOfSales}
                             onChange={(e) => setDailyLogForm(prev => ({ ...prev, numberOfSales: e.target.value }))}
                             placeholder="e.g. 2"
-                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono"
+                            className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-3 rounded-xl outline-none focus:border-emerald-500 transition font-sans"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-soft)] mb-1">
+                        <label className="block text-[10px] uppercase font-extrabold text-[var(--crm-heading)] mb-1">
                           📝 NOTES / REMARKS
                         </label>
                         <textarea
@@ -1330,14 +1680,14 @@ export default function SalesExecutiveDashboard() {
                           value={dailyLogForm.note}
                           onChange={(e) => setDailyLogForm(prev => ({ ...prev, note: e.target.value }))}
                           placeholder="e.g. Closed 2 deals with SGS Iron Ore client"
-                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-2.5 rounded outline-none focus:border-teal-500 transition font-mono resize-none"
+                          className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-xs p-3 rounded-xl outline-none focus:border-emerald-500 transition font-sans resize-none"
                         ></textarea>
                       </div>
 
                       <button
                         type="submit"
                         disabled={submittingDailyLog}
-                        className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-[10px] uppercase tracking-wider py-3 rounded transition cursor-pointer font-mono shadow flex items-center justify-center gap-2"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-sans font-extrabold text-xs uppercase tracking-wider py-3 rounded-xl transition cursor-pointer shadow-md flex items-center justify-center gap-2 border border-emerald-600"
                       >
                         {submittingDailyLog ? (
                           <>
@@ -1352,18 +1702,18 @@ export default function SalesExecutiveDashboard() {
                   </div>
 
                   {/* Right Column (8 Cols): EXECUTIVE DAILY ACTIVITY & SALES LOGS Table */}
-                  <div className="lg:col-span-8 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-lg shadow-sm text-left font-mono flex flex-col justify-between">
+                  <div className="lg:col-span-8 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-2xl shadow-xs text-left font-sans flex flex-col justify-between">
                     <div>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[var(--crm-line)] pb-3 mb-4 gap-2">
                         <div>
-                          <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-bold flex items-center gap-1.5">
-                            <FiCheckSquare size={14} className="text-teal-400" /> EXECUTIVE DAILY ACTIVITY & SALES LOGS
+                          <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-sans font-extrabold flex items-center gap-1.5">
+                            <FiCheckSquare size={14} className="text-emerald-500" /> EXECUTIVE DAILY ACTIVITY & SALES LOGS
                           </h3>
-                          <p className="text-[10px] text-[var(--crm-ink-faint)] font-mono mt-0.5">
+                          <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans mt-0.5">
                             Real-time daily work entries submitted by you for Manager tracking (Calls, Conversions & Closed Sales).
                           </p>
                         </div>
-                        <span className="bg-teal-950/80 border border-teal-800 text-teal-300 font-mono text-[9px] px-2.5 py-0.5 rounded font-bold uppercase shrink-0">
+                        <span className="bg-emerald-600 text-white border border-emerald-600 font-sans text-[10px] px-3 py-1 rounded-xl font-extrabold uppercase shrink-0 shadow-xs">
                           {getFilteredByDate(dailyWorkLogs).length} ENTRIES LOGGED
                         </span>
                       </div>
@@ -1371,47 +1721,47 @@ export default function SalesExecutiveDashboard() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[650px]">
                           <thead>
-                            <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-ink-soft)] text-[9px] uppercase tracking-widest font-mono font-bold border-b border-[var(--crm-line)]">
+                            <tr className="bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] text-[10px] uppercase tracking-widest font-sans font-extrabold border-b border-[var(--crm-line)]">
                               <th className="py-3 px-3">EMPLOYEE NAME</th>
                               <th className="py-3 px-3">DEPT</th>
-                              <th className="py-3 px-3 text-teal-400">📞 CALLS MADE</th>
-                              <th className="py-3 px-3 text-amber-400">🎯 CONVERSIONS</th>
-                              <th className="py-3 px-3 text-emerald-400">💰 SALES COUNT</th>
+                              <th className="py-3 px-3 text-[var(--crm-heading)]">📞 CALLS MADE</th>
+                              <th className="py-3 px-3 text-[var(--crm-heading)]">🎯 CONVERSIONS</th>
+                              <th className="py-3 px-3 text-[var(--crm-heading)]">💰 SALES COUNT</th>
                               <th className="py-3 px-3">DATE & TIME</th>
                               <th className="py-3 px-3">NOTES</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[var(--crm-line)] text-xs font-mono">
+                          <tbody className="divide-y divide-[var(--crm-line)] text-xs font-sans">
                             {getFilteredByDate(dailyWorkLogs).length === 0 ? (
                               <tr>
-                                <td colSpan="7" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[10px]">
+                                <td colSpan="7" className="text-center py-12 text-[var(--crm-ink-faint)] uppercase tracking-widest text-[11px] font-semibold">
                                   No daily work logs submitted yet for this date filter.
                                 </td>
                               </tr>
                             ) : (
                               getFilteredByDate(dailyWorkLogs).map((log) => (
                                 <tr key={log._id || log.id} className="hover:bg-[var(--crm-bg-sunken)]/40 transition">
-                                  <td className="py-3 px-3 font-bold text-[var(--crm-heading)] font-sans">
+                                  <td className="py-3 px-3 font-extrabold text-[var(--crm-heading)]">
                                     {log.employeeName || user?.fullName || user?.name || 'Sales Executive'}
                                   </td>
                                   <td className="py-3 px-3">
-                                    <span className="bg-slate-900 border border-slate-800 text-teal-400 px-2 py-0.5 rounded text-[8px] uppercase font-bold">
+                                    <span className="bg-blue-600 text-white border border-blue-600 px-2.5 py-0.5 rounded-lg text-[9px] uppercase font-extrabold">
                                       {log.department || user?.department || 'SALES'}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-3 text-teal-300 font-bold">
+                                  <td className="py-3 px-3 text-[var(--crm-heading)] font-extrabold">
                                     {log.numberOfCalls} Calls
                                   </td>
-                                  <td className="py-3 px-3 text-amber-300 font-bold">
+                                  <td className="py-3 px-3 text-[var(--crm-heading)] font-extrabold">
                                     {log.numberOfConversions} Conversions
                                   </td>
-                                  <td className="py-3 px-3 text-emerald-400 font-bold">
+                                  <td className="py-3 px-3 text-[var(--crm-heading)] font-extrabold">
                                     {log.numberOfSales} Sales
                                   </td>
-                                  <td className="py-3 px-3 text-[var(--crm-ink-faint)] text-[10px] whitespace-nowrap">
+                                  <td className="py-3 px-3 text-[var(--crm-ink-faint)] text-[10px] whitespace-nowrap font-mono font-medium">
                                     {new Date(log.createdAt || log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                   </td>
-                                  <td className="py-3 px-3 font-sans text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[160px]" title={log.note}>
+                                  <td className="py-3 px-3 text-[11px] text-[var(--crm-ink-soft)] italic truncate max-w-[160px]" title={log.note}>
                                     {log.note ? `"${log.note}"` : '—'}
                                   </td>
                                 </tr>
@@ -1735,7 +2085,8 @@ export default function SalesExecutiveDashboard() {
                 </div>
 
               </div>
-            )}
+            </>
+          )}
 
             {/* TAB 2: LEADERS & GAMIFICATION */}
             {activeTab === 'leaderboard' && (

@@ -118,6 +118,9 @@ const itoAdsRoutes =
 const employeeActivityRoutes =
   require('./modules/employee-activity/employeeActivity.routes');
 
+const hrWorkLogRoutes =
+  require('./modules/hr/hrWorkLog.routes');
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -532,6 +535,16 @@ const apiRoutes = [
   {
     path: '/employee-activity',
     router: employeeActivityRoutes
+  },
+
+  {
+    path: '/hr-work-log',
+    router: hrWorkLogRoutes
+  },
+
+  {
+    path: '/hr/work-log',
+    router: hrWorkLogRoutes
   }
 ];
 

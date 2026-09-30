@@ -645,21 +645,21 @@ export default function Followup() {
                   </div>
 
                   {/* People Section: Who did Follow-up & Who is assigned for Next Stage */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-100 dark:bg-slate-800/90 p-2.5 sm:p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs font-mono">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] bg-[var(--crm-bg-sunken)] p-2.5 sm:p-3 rounded-lg border border-[var(--crm-line)] shadow-xs font-mono">
                     <div className="space-y-0.5 min-w-0">
-                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
+                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block">
                         👤 DONE BY:
                       </span>
-                      <strong className="text-teal-700 dark:text-teal-300 text-[10px] sm:text-xs font-black block truncate">
+                      <strong className="text-teal-600 dark:text-teal-400 text-[10px] sm:text-xs font-black block truncate">
                         {rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
 
-                    <div className="space-y-0.5 border-l border-slate-300 dark:border-slate-700 pl-2 sm:pl-2.5 min-w-0">
-                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-slate-700 dark:text-slate-300 font-bold block">
+                    <div className="space-y-0.5 border-l border-[var(--crm-line)] pl-2 sm:pl-2.5 min-w-0">
+                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-[var(--crm-ink-faint)] font-bold block">
                         🎯 CUSTODIAN:
                       </span>
-                      <strong className="text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-xs font-black block truncate">
+                      <strong className="text-emerald-600 dark:text-emerald-400 text-[10px] sm:text-xs font-black block truncate">
                         {rec.assignedToName || rec.executiveName || 'Unassigned'}
                       </strong>
                     </div>
@@ -675,7 +675,7 @@ export default function Followup() {
                         >
                           {rec.customerName}
                           {rec.contactRole && (
-                            <span className="text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-md">
+                            <span className="text-[9px] font-mono font-bold bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] px-2 py-0.5 rounded-md">
                               {rec.contactRole}
                             </span>
                           )}
@@ -684,7 +684,7 @@ export default function Followup() {
                         <h4 className="font-serif font-bold text-sm text-[var(--crm-heading)] flex items-center gap-1.5">
                           {rec.customerName}
                           {rec.contactRole && (
-                            <span className="text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-md">
+                            <span className="text-[9px] font-mono font-bold bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border border-[var(--crm-line)] px-2 py-0.5 rounded-md">
                               {rec.contactRole}
                             </span>
                           )}
@@ -729,7 +729,7 @@ export default function Followup() {
                   )}
 
                   {/* Lead Specifications Grid */}
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-slate-900 dark:text-slate-100 font-mono font-bold bg-slate-100 dark:bg-slate-800/90 p-2.5 sm:p-3 rounded-lg border border-slate-300 dark:border-slate-700 shadow-xs">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-[var(--crm-heading)] font-mono font-bold bg-[var(--crm-bg-sunken)] p-2.5 sm:p-3 rounded-lg border border-[var(--crm-line)] shadow-xs">
                     {rec.mobileNumber && rec.mobileNumber !== '—' ? (
                       <a href={`tel:${rec.mobileNumber}`} className="hover:text-emerald-500 hover:underline cursor-pointer flex items-center min-w-0">
                         <FiPhone size={10} className="inline text-emerald-600 dark:text-emerald-400 mr-1 shrink-0" /> <span className="truncate"><strong className="font-black">{rec.mobileNumber}</strong> 📞</span>
@@ -744,7 +744,7 @@ export default function Followup() {
 
                   {/* Notes / Talk Summary */}
                   {rec.notes && (
-                    <div className="text-[11px] font-sans text-slate-900 dark:text-slate-100 font-bold bg-slate-100 dark:bg-slate-800/90 p-3 rounded-lg border border-slate-300 dark:border-slate-700 italic border-l-4 border-l-teal-500 shadow-xs leading-relaxed">
+                    <div className="text-[11px] font-sans text-[var(--crm-heading)] font-bold bg-[var(--crm-bg-sunken)] p-3 rounded-lg border border-[var(--crm-line)] italic border-l-4 border-l-teal-500 shadow-xs leading-relaxed">
                       "{rec.notes}"
                     </div>
                   )}

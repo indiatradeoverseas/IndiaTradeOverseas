@@ -29,6 +29,7 @@ import FounderTransportWidget from './transport/FounderTransportWidget';
 import ScreenshotAlertsWidget from '../../components/crm/ScreenshotAlertsWidget';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
+import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
 
 const EMPLOYEE_DEPARTMENTS = ['SALES', 'HR', 'IT', 'ADMIN', 'FINANCE', 'OPERATIONS', 'MARKETING', 'TRANSPORT'];
 
@@ -1076,7 +1077,16 @@ export default function CEODashboard() {
         )}
 
         {/* =========================================================================
-            SECTION 3: ENTERPRISE FILE SHARING MODULE (FOUNDER, CEO, ADMIN -> STAFF)
+            SECTION 3: HR MANAGER & EXECUTIVE WORK LOGS REGISTRY
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'WORK_LOGS') && (
+          <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+            <HrWorkLogWidget showSubmissionForm={false} title="HR Manager & HR Executive Daily Work Log Registry" />
+          </motion.div>
+        )}
+
+        {/* =========================================================================
+            SECTION 4: ENTERPRISE FILE SHARING MODULE (FOUNDER, CEO, ADMIN -> STAFF)
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'FILES') && (
           <motion.div initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
