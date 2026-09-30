@@ -999,17 +999,18 @@ export default function Prakriti() {
             formData.append('registrationSource', 'QUICK_GATE');
 
             const res = await distributorApi.registerDistributor(formData);
-            if (res.success) {
-                const id = res.data?.distributorId || res.data?._id;
-                const token = res.data?.token;
-                setLinkedDistributorId(id || null);
-                if (id) localStorage.setItem('prakriti_distributor_id', id);
-                if (token) localStorage.setItem('distributor_token', token);
-                setShowPersonalDetails(false);
-                setUserAccessLayer(5);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                toast.dismiss();
-                toast.success('Details saved! Product pricing and ordering unlocked.', { id: 'prakriti_gate_toast' });
+            if (!res?.success) {
+                throw new Error(
+                    res?.message || 'Failed to save buyer details.'
+                );
+            }
+
+            const id = res.data?.distributorId || res.data?._id;
+            const token = res.data?.token || res.data?.accessToken;
+            setLinkedDistributorId(id || null);
+            if (id) {
+                setDistributorId(id);
+                localStorage.setItem('prakriti_distributor_id', id);
             }
 
             if (token) {

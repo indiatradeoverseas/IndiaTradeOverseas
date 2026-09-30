@@ -7,6 +7,7 @@ const { generateOtp, getOtpHtml } = require('../../utils/otp');
 const { sendEmail } = require('../../utils/mailer');
 const { ok, fail } = require('../../utils/response');
 const { getRelativePath, resolveUploadPath } = require('../../utils/file');
+const env = require('../../config/env');
 
 // The quick-gate signup (Tea/Rice/Stone) never collects a company name, so a
 // brand-new record with none falls back to this division-aware label instead
@@ -592,9 +593,9 @@ const registerDistributor = async (req, res, next) => {
     const jwt =
       require('jsonwebtoken');
 
-    sendEmail(email, subject, text, html).catch((mailErr) => {
-      console.warn('Background mail note (non-blocking):', mailErr.message);
-    });
+    // sendEmail(email, subject, text, html).catch((mailErr) => {
+    //   console.warn('Background mail note (non-blocking):', mailErr.message);
+    // });
 
     if (isQuickGateSubmission) {
       distributor.approvalStatus =
