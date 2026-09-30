@@ -747,6 +747,7 @@ export default function RicePage() {
 
         try {
             setLoadingQuickGate(true);
+            checkout = resolveDirectRiceCheckout(builtRequirement);
             const formData = new FormData();
             formData.append('name', fullName);
             formData.append('email', email);
@@ -758,17 +759,10 @@ export default function RicePage() {
             formData.append('registrationSource', 'QUICK_GATE');
 
             const res = await distributorApi.registerDistributor(formData);
-            if (res.success) {
-                const id = res.data?.distributorId || res.data?._id;
-                const token = res.data?.token;
-                setLinkedDistributorId(id || null);
-                if (id) localStorage.setItem('rice_distributor_id', id);
-                if (token) localStorage.setItem('distributor_token', token);
-                setShowPersonalDetails(false);
-                setUserAccessLayer(5);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                toast.dismiss();
-                toast.success('Details saved! Product pricing unlocked.', { id: 'rice_gate_toast' });
+            if (!res?.success) {
+                throw new Error(
+                    res?.message || 'Failed to save buyer details.'
+                );
             }
 
             const id =
