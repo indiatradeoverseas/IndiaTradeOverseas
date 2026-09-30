@@ -16,6 +16,7 @@ import {
   getCrmAdminNavItems,
   shouldShowCrmAdminMenu
 } from '../../config/crmNav';
+import { ItcLogoBadge } from '../common/ItcLogo';
 
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
@@ -101,19 +102,17 @@ export default function Sidebar({ onClose }) {
         className="flex min-h-[92px] items-center justify-between gap-3 border-b px-4 py-4 sm:px-5"
         style={{ borderColor: 'var(--crm-line)' }}
       >
-        <div className="min-w-0 flex-1 text-left">
-          <h1
-            className="text-[13px] sm:text-[15px] font-bold uppercase tracking-wider leading-tight text-left break-words text-white"
-            style={{ fontFamily: 'var(--crm-font-display)', color: '#FFFFFF' }}
-          >
-            India Trade Center
-          </h1>
-          <p
-            className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em]"
-            style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-accent)' }}
-          >
-            <span>Role</span><span className="text-white font-extrabold">· {user?.role || 'USER'}</span>{user?.department && <><span style={{ color: 'var(--crm-accent)' }}>·</span><span style={{ color: 'var(--crm-accent)' }}>{user.department}</span></>}
-          </p>
+        <div className="flex items-center gap-3 min-w-0 flex-1 text-left">
+          <ItcLogoBadge size="sm" className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h1
+              className="text-[13px] sm:text-[15px] font-extrabold uppercase tracking-wider leading-tight text-left break-words text-white"
+              style={{ fontFamily: 'var(--crm-font-display)', color: '#FFFFFF' }}
+            >
+              India Trade Center
+            </h1>
+          
+          </div>
         </div>
         {onClose && (
           <button

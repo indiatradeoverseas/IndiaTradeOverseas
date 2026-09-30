@@ -1871,7 +1871,6 @@ export default function Leads() {
       {/* Upper Context Header Panel */}
       <motion.div variants={blockVariants} className="w-full border-b border-[var(--crm-ink-soft)]/10 py-6 px-4 md:px-8 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-[var(--crm-bg-sunken)]/40 backdrop-blur-sm">
         <div className="space-y-1 text-left">
-          <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--crm-ink-faint)] font-bold block font-mono">MODULE 03 & 04 // TRADE PIPELINE & SALES REGISTRY</span>
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-[var(--crm-heading)] uppercase tracking-tight">Leads & Global Inquiries</h1>
         </div>
 
@@ -2775,14 +2774,14 @@ export default function Leads() {
                                 </button>
                                 <button
                                   onClick={(e) => triggerWhatsApp(e, lead.whatsAppNumber || lead.phone, lead)}
-                                  className="p-1.5 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 hover:bg-emerald-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                   title="Launch WhatsApp Chat"
                                 >
                                   <FiMessageSquare size={13} />
                                 </button>
                                 <button
                                   onClick={(e) => triggerEmail(e, lead.email, lead)}
-                                  className="p-1.5 bg-sky-950/80 border border-sky-800/60 text-sky-400 hover:bg-sky-900 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  className="p-1.5 bg-Red-600 hover:bg-rose-700 text-amber-300 border border-rose-600 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                   title="Send Direct Email"
                                 >
                                   <FiMail size={13} />
@@ -2897,13 +2896,13 @@ export default function Leads() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => triggerWhatsApp(lead.whatsAppNumber || lead.phone)}
-                            className="px-2.5 py-1.5 bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold border border-emerald-600 rounded text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow-xs"
                           >
                             <FiMessageSquare size={12} /> WhatsApp
                           </button>
                           <button
                             onClick={() => triggerEmail(lead.email)}
-                            className="px-2.5 py-1.5 bg-sky-950/60 border border-sky-800/50 text-sky-400 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold border border-rose-600 rounded text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow-xs"
                           >
                             <FiMail size={12} /> Email
                           </button>

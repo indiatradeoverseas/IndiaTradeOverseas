@@ -1923,12 +1923,12 @@ export default function TransportManager() {
             </div>
 
             {/* Sub-Tab Selector Buttons */}
-            <div className="flex items-center gap-2 bg-[var(--crm-bg-sunken)] p-1 border rounded-sm shrink-0" style={{ borderColor: 'var(--crm-line)' }}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-[var(--crm-bg-sunken)] p-1.5 border rounded-lg w-full md:w-auto" style={{ borderColor: 'var(--crm-line)' }}>
               <button
                 onClick={() => setAssignSubTab('PENDING')}
-                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${assignSubTab === 'PENDING'
-                    ? 'bg-emerald-700 text-white border border-emerald-500/60 shadow font-bold'
-                    : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
+                className={`w-full sm:w-auto px-3.5 py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${assignSubTab === 'PENDING'
+                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-xs'
+                    : 'text-[var(--crm-ink-soft)] hover:text-emerald-400'
                   }`}
               >
                 📌 Active & Pending Assignments ({
@@ -1938,9 +1938,9 @@ export default function TransportManager() {
 
               <button
                 onClick={() => setAssignSubTab('COMPLETED')}
-                className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all cursor-pointer flex items-center gap-1.5 ${assignSubTab === 'COMPLETED'
-                    ? 'bg-emerald-600 text-white border border-emerald-400/60 shadow font-bold'
-                    : 'text-[var(--crm-ink-soft)] hover:text-emerald-300'
+                className={`w-full sm:w-auto px-3.5 py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${assignSubTab === 'COMPLETED'
+                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-xs'
+                    : 'text-[var(--crm-ink-soft)] hover:text-emerald-400'
                   }`}
               >
                 ✅ Completed / Deal Won / Closed Won ({
@@ -1954,7 +1954,7 @@ export default function TransportManager() {
           {assignSubTab === 'PENDING' ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">
+                <span className="text-[10px] sm:text-xs uppercase font-extrabold text-emerald-600 dark:text-emerald-400 tracking-wider">
                   Confirmed Orders Ready for Transport & Driver Assignment
                 </span>
               </div>
@@ -1978,39 +1978,39 @@ export default function TransportManager() {
                         : (item.salesOwner || item.driverName || 'Unassigned');
 
                       return (
-                        <div key={item._id || idx} className="border rounded-sm p-4 space-y-3 shadow-sm hover:border-emerald-500/50 transition-all flex flex-col justify-between" style={CARD}>
+                        <div key={item._id || idx} className="border rounded-xl p-4 space-y-3 shadow-xs hover:border-emerald-500/50 transition-all flex flex-col justify-between" style={CARD}>
                           <div className="space-y-2">
                             <div className="flex justify-between items-start gap-2 border-b pb-2" style={{ borderColor: 'var(--crm-line)' }}>
                               <div>
-                                <span className="text-[9px] text-teal-300 font-bold uppercase tracking-wider block font-mono">
+                                <span className="text-[9px] text-teal-600 dark:text-teal-400 font-extrabold uppercase tracking-wider block font-mono">
                                   {item.orderNumber || item.dispatchNumber || `ORD-${idx + 1}`}
                                 </span>
-                                <h3 className="text-xs font-bold text-[var(--crm-heading)] truncate max-w-[180px]">
+                                <h3 className="text-xs sm:text-sm font-extrabold text-[var(--crm-heading)] truncate max-w-[200px]">
                                   {item.customerName || 'Confirmed Client'}
                                 </h3>
                               </div>
-                              <span className="text-[9px] px-2 py-0.5 bg-teal-950/80 text-teal-300 border border-teal-800/80 rounded font-bold uppercase shrink-0">
+                              <span className="text-[9px] px-2.5 py-1 bg-emerald-600 text-white border border-emerald-600 rounded-md font-extrabold uppercase shrink-0 shadow-xs">
                                 {item.stage || item.status || 'ORDER CONFIRMED'}
                               </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
                               <div>
-                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Route</span>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-extrabold">Route</span>
                                 <span className="text-[var(--crm-heading)] font-bold truncate block">
                                   {item.origin || 'Depot'} ➔ {item.destination || 'Destination'}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Material</span>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-extrabold">Material</span>
                                 <span className="text-[var(--crm-heading)] truncate block font-bold">
                                   {item.material || 'Cargo Goods'} ({item.weightTons || '20'} MT)
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Freight Rev</span>
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-extrabold">Freight Rev</span>
                                 {Number(item.totalFreightAmount || item.freightAmount || 0) > 0 ? (
-                                  <span className="text-emerald-400 font-bold">
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-xs">
                                     ₹{Number(item.totalFreightAmount || item.freightAmount).toLocaleString('en-IN')}
                                   </span>
                                 ) : (
@@ -2039,8 +2039,8 @@ export default function TransportManager() {
                                 )}
                               </div>
                               <div>
-                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-bold">Assigned To</span>
-                                <span className="text-teal-300 font-bold truncate block">
+                                <span className="text-[8px] text-[var(--crm-ink-faint)] uppercase block font-extrabold">Assigned To</span>
+                                <span className="text-teal-600 dark:text-teal-400 font-extrabold truncate block">
                                   {currAssignedName}
                                 </span>
                               </div>
@@ -2050,8 +2050,8 @@ export default function TransportManager() {
                           {/* ASSIGNMENT CONTROLS */}
                           <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--crm-line)' }}>
                             <div>
-                              <label className="text-[8px] uppercase font-bold text-[var(--crm-ink-faint)] block mb-1">
-                                Assign Executive / Driver:
+                              <label className="text-[9px] uppercase font-extrabold text-[var(--crm-heading)] block mb-1">
+                                ASSIGN EXECUTIVE / DRIVER:
                               </label>
                               <div className="flex items-center gap-1.5">
                                 <select
@@ -2062,7 +2062,7 @@ export default function TransportManager() {
                                     }
                                   }}
                                   defaultValue=""
-                                  className="w-full p-1.5 border rounded text-[10px] bg-[var(--crm-bg-sunken)] text-slate-200 border-[var(--crm-line)] outline-none font-mono cursor-pointer focus:border-teal-500 transition"
+                                  className="w-full p-2 border rounded-xl text-xs bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] outline-none font-mono font-semibold cursor-pointer focus:border-teal-500 transition"
                                 >
                                   <option value="" disabled>Select Transport Driver...</option>
                                   {driversList.map(d => (
@@ -2083,9 +2083,9 @@ export default function TransportManager() {
                                   toast.error('Select a Transport Driver from the dropdown first');
                                 }
                               }}
-                              className="w-full py-2 bg-teal-700 hover:bg-teal-600 text-white text-[10px] font-bold uppercase rounded tracking-wider shadow cursor-pointer flex items-center justify-center gap-1 transition border border-teal-500/40"
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold uppercase rounded-xl tracking-wider shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition border border-emerald-600"
                             >
-                              <FiUserCheck size={12} /> Assign Driver To Lead
+                              <FiUserCheck size={14} /> Assign Driver To Lead
                             </button>
                           </div>
                         </div>

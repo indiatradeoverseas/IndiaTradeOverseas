@@ -27,6 +27,7 @@ import FounderTransportWidget from './transport/FounderTransportWidget';
 import ScreenshotAlertsWidget from '../../components/crm/ScreenshotAlertsWidget';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
+import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
 import WarningLetterModal from '../../components/crm/warning';
 import TerminationLetterModal from '../../components/crm/Termination';
 import PiLetterModal from '../../components/crm/Pi';
@@ -608,10 +609,10 @@ export default function FounderDashboard() {
     const dead = Number(canonical.dead || 0);
 
     const list = [
-      { name: 'Hot Leads', label: 'HOT 🔥', value: hot, color: '#EF4444', badgeBg: '#450a0a', badgeBorder: '#991b1b', badgeText: '#fca5a5' },
-      { name: 'Warm Leads', label: 'WARM ⚡', value: warm, color: '#F57C00', badgeBg: '#451a03', badgeBorder: '#9a3412', badgeText: '#fdba74' },
-      { name: 'Cold Leads', label: 'COLD ❄️', value: cold, color: '#2563EB', badgeBg: '#172554', badgeBorder: '#1e40af', badgeText: '#93c5fd' },
-      { name: 'Dead / Lost', label: 'DEAD 💀', value: dead, color: '#6B7280', badgeBg: '#0f172a', badgeBorder: '#334155', badgeText: '#94a3b8' }
+      { name: 'Hot Leads', label: 'HOT 🔥', value: hot, color: '#EF4444', badgeBg: 'rgba(239, 68, 68, 0.15)', badgeBorder: 'rgba(239, 68, 68, 0.3)', badgeText: '#EF4444' },
+      { name: 'Warm Leads', label: 'WARM ⚡', value: warm, color: '#F57C00', badgeBg: 'rgba(245, 124, 0, 0.15)', badgeBorder: 'rgba(245, 124, 0, 0.3)', badgeText: '#F57C00' },
+      { name: 'Cold Leads', label: 'COLD ❄️', value: cold, color: '#2563EB', badgeBg: 'rgba(37, 99, 235, 0.15)', badgeBorder: 'rgba(37, 99, 235, 0.3)', badgeText: '#3B82F6' },
+      { name: 'Dead / Lost', label: 'DEAD 💀', value: dead, color: '#6B7280', badgeBg: 'rgba(107, 114, 128, 0.15)', badgeBorder: 'rgba(107, 114, 128, 0.3)', badgeText: '#9CA3AF' }
     ];
 
     const activeItems = list.filter((item) => item.value > 0);
@@ -690,7 +691,7 @@ export default function FounderDashboard() {
 
   if (loading) {
     return (
-      <div className="w-full space-y-6 p-6">
+      <div className="w-full space-y-6 p-6 min-h-screen bg-[var(--crm-bg)]" style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)' }}>
         <div className="w-full border-b py-6" style={{ borderColor: 'var(--crm-line)' }}>
           <div className="crm-skeleton h-3 w-56 rounded-sm mb-3" style={{ background: 'var(--crm-bg-sunken)' }} />
           <div className="crm-skeleton h-8 w-80 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
@@ -702,13 +703,21 @@ export default function FounderDashboard() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-screen overflow-x-hidden font-sans" style={{ background: 'var(--crm-bg)' }}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="w-full min-h-screen overflow-x-hidden font-sans bg-[var(--crm-bg)]"
+      style={{
+        background: 'var(--crm-bg)',
+        color: 'var(--crm-ink-soft)'
+      }}
+    >
       {/* Top Header Bar */}
       <div
         className="sticky top-0 z-20 w-full border-b px-3 py-3 sm:px-6 sm:py-5"
         style={{
           borderColor: 'var(--crm-line)',
-          background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)',
+          background: 'color-mix(in srgb, var(--crm-bg-raised) 96%, transparent)',
           backdropFilter: 'blur(14px)'
         }}
       >
@@ -797,6 +806,7 @@ export default function FounderDashboard() {
             {[
               { id: 'ALL', label: 'All Modules' },
               { id: 'OVERVIEW', label: 'Overview' },
+              { id: 'HR_WORK_LOGS', label: 'HR Daily Work Logs' },
               { id: 'FILES', label: 'File Sharing' },
               { id: 'WORKFORCE', label: 'Workforce & Targets' },
               { id: 'ATTENDANCE', label: 'Attendance & Telemetry' },
@@ -943,7 +953,7 @@ export default function FounderDashboard() {
                     Bars: Volume/Revenue · Line: Total Conversion %
                   </p>
                 </div>
-                <span className="text-[8.5px] sm:text-[9px] font-sans uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded self-start sm:self-auto">
+                <span className="text-[8.5px] sm:text-[9px] font-sans uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded self-start sm:self-auto font-bold">
                   Founder Command Feed
                 </span>
               </div>
@@ -1002,7 +1012,7 @@ export default function FounderDashboard() {
                           nameKey="name"
                         >
                           {leadTemperatureData.map((entry, index) => (
-                            <Cell key={`temp-cell-${index}`} fill={entry.color} stroke="var(--crm-bg)" strokeWidth={2} />
+                            <Cell key={`temp-cell-${index}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
                           ))}
                         </Pie>
                         <Tooltip
@@ -1163,6 +1173,15 @@ export default function FounderDashboard() {
         )}
 
         {/* =========================================================================
+            HR MANAGER & HR EXECUTIVE DAILY WORK LOG REGISTRY MODULE
+            ========================================================================= */}
+        {(activeTab === 'ALL' || activeTab === 'HR_WORK_LOGS') && (
+          <div className="space-y-6">
+            <HrWorkLogWidget showSubmissionForm={false} title="HR Manager & HR Executive Daily Work Log Registry" />
+          </div>
+        )}
+
+        {/* =========================================================================
             WORKFORCE MANAGEMENT & SALES TARGET ASSIGNMENT
             ========================================================================= */}
         {(activeTab === 'ALL' || activeTab === 'WORKFORCE') && (
@@ -1243,15 +1262,15 @@ export default function FounderDashboard() {
                             <div className="text-[9px] font-sans text-[var(--crm-ink-faint)]">{emp.employeeId} · {emp.email}</div>
                           </td>
                           <td className="py-3 px-3 font-sans">
-                            <span className="px-2.5 py-1 rounded-full text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400 font-sans shadow-xs">
+                            <span className="px-2.5 py-1 rounded-full text-[8px] uppercase font-bold border border-cyan-200 bg-cyan-50 text-cyan-700 font-sans shadow-xs">
                               {emp.department}
                             </span>
                           </td>
                           <td className="py-3 px-3 font-sans text-[var(--crm-heading)]">{emp.role}</td>
                           <td className="py-3 px-3">
                             <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold border uppercase ${emp.status === 'ACTIVE'
-                              ? 'border-emerald-800 bg-emerald-950 text-emerald-400'
-                              : 'border-rose-800 bg-rose-950 text-rose-400'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-rose-200 bg-rose-50 text-rose-700'
                               }`}>
                               {emp.status}
                             </span>
@@ -1386,7 +1405,7 @@ export default function FounderDashboard() {
               <h3 className="text-xs uppercase font-bold tracking-widest flex items-center gap-2" style={LABEL_MONO}>
                 <FiTrendingUp className="text-emerald-400" /> Executive Sales & Transport Leaderboard ({salesAndTransportLeaderboard.length} Executives)
               </h3>
-              <span className="text-[10px] font-sans text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-sans text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">
                 Live Sales Revenue
               </span>
             </div>
@@ -1418,12 +1437,12 @@ export default function FounderDashboard() {
                       return (
                         <tr key={item._id || item.employeeId || idx} className="hover:bg-[var(--crm-bg-sunken)]/50">
                           <td className="py-3 px-3 font-bold text-[var(--crm-heading)]">{item.name || item.employeeName || item.fullName || 'Sales Executive'}</td>
-                          <td className="py-3 px-3"><span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-800 bg-cyan-950 text-cyan-400">{item.department || 'SALES'}</span></td>
-                          <td className="py-3 px-3 font-bold text-emerald-400">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
+                          <td className="py-3 px-3"><span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold border border-cyan-200 bg-cyan-50 text-cyan-700">{item.department || 'SALES'}</span></td>
+                          <td className="py-3 px-3 font-bold text-emerald-600">{fmtCurrency(item.revenue || item.totalRevenue || 0)}</td>
                           <td className="py-3 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
-                          <td className="py-3 px-3 font-bold text-pink-400">{convPct}%</td>
+                          <td className="py-3 px-3 font-bold text-pink-600">{convPct}%</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${idx === 0 ? 'bg-amber-950 border border-amber-800 text-amber-300' : 'bg-slate-900 border border-slate-700 text-slate-300'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${idx === 0 ? 'bg-amber-100 border border-amber-300 text-amber-900' : 'bg-slate-100 border border-slate-300 text-slate-700'}`}>
                               #{idx + 1} {idx === 0 ? '🏆 TOP' : 'ACTIVE'}
                             </span>
                           </td>
@@ -1467,7 +1486,7 @@ export default function FounderDashboard() {
                         <td className="py-2.5 px-3 text-[10px] text-cyan-400">{job.department}</td>
                         <td className="py-2.5 px-3 text-[10px] text-[var(--crm-ink-soft)]">{job.jobType || 'Full-time'}</td>
                         <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${job.isActive ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${job.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                             {job.isActive ? 'OPEN' : 'CLOSED'}
                           </span>
                         </td>
@@ -1514,10 +1533,10 @@ export default function FounderDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900">
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'APPROVED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer transition">
                           Approve
                         </button>
-                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-rose-950 text-rose-400 border border-rose-800 hover:bg-rose-900">
+                        <button disabled={reviewingLeaveId === lv._id} onClick={() => handleLeaveDecision(lv._id, 'REJECTED')} className="px-2.5 py-1 text-[9px] font-sans uppercase rounded bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer transition">
                           Reject
                         </button>
                       </div>

@@ -327,6 +327,28 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
     return acc;
   }, {});
 
+  // Aggregate Call Recordings count per sales executive
+  const CallRecording = require('../leads/callRecording.model');
+  const recordingsAgg = await CallRecording.aggregate([
+    { $match: { createdAt: { $gte: range.start, $lte: range.end } } },
+    { $group: { _id: '$executiveId', count: { $sum: 1 }, names: { $addToSet: '$executiveName' } } }
+  ]);
+
+  const recordingsByEmployee = {};
+  recordingsAgg.forEach(row => {
+    if (row._id) {
+      recordingsByEmployee[row._id.toString()] = row.count;
+    }
+    if (Array.isArray(row.names)) {
+      row.names.forEach(n => {
+        if (n) {
+          const lower = n.toLowerCase().trim();
+          recordingsByEmployee[lower] = (recordingsByEmployee[lower] || 0) + row.count;
+        }
+      });
+    }
+  });
+
   const leadsByEmployee = leadsAgg.reduce((acc, row) => {
     if (row._id) {
       acc[row._id.toString()] = row;
@@ -540,6 +562,17 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
 
       completedTasksCount = tasksByEmployeeCode[rep.employeeCode] || 0;
 
+      let recordingsCount = 0;
+      rep.userIds.forEach(id => {
+        recordingsCount += recordingsByEmployee[id] || 0;
+      });
+      if (rep.fullName && recordingsByEmployee[rep.fullName.toLowerCase().trim()]) {
+        recordingsCount = Math.max(recordingsCount, recordingsByEmployee[rep.fullName.toLowerCase().trim()]);
+      }
+      if (rep.employeeCode && recordingsByEmployee[rep.employeeCode.toString()]) {
+        recordingsCount = Math.max(recordingsCount, recordingsByEmployee[rep.employeeCode.toString()]);
+      }
+
       let targetValue = 0;
       let targetDeals = null;
       rep.userIds.forEach(id => {
@@ -583,6 +616,8 @@ async function getLeaderboard({ period = 'monthly', department, referenceDate } 
         winRate,
         activityCount,
         completedTasksCount,
+        recordingsCount,
+        callRecordingsCount: recordingsCount,
         targetValue,
         targetDeals,
         isTargetAchieved: targetValue > 0 ? revenue >= targetValue : false

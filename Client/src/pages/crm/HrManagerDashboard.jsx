@@ -52,7 +52,8 @@ import { payslipApi } from '../../api/payslip';
 import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
-import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, LabelList } from 'recharts';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -109,6 +110,7 @@ export default function HrManagerDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [payrollSubTab, setPayrollSubTab] = useState('payroll');
+  const [hrChartMode, setHrChartMode] = useState('horizontalBar');
 
   // View state for directory (grid vs list)
   const [viewMode, setViewMode] = useState('grid');
@@ -272,9 +274,29 @@ export default function HrManagerDashboard() {
   // Real HR Analytics & Live Operational Metrics computation
   const realHrAnalyticsData = useMemo(() => {
     const totalStaff = employees.length || 0;
-    const presentCount = attendanceReport?.presentCount ?? attendanceReport?.present ?? 0;
-    const absentCount = attendanceReport?.absentCount ?? attendanceReport?.absent ?? 0;
-    const lateCount = attendanceReport?.lateCount ?? attendanceReport?.late ?? 0;
+    
+    // Check attendanceReport structure (inside .stats or root)
+    const reportStats = attendanceReport?.stats || attendanceReport || {};
+    let presentCount = reportStats?.presentCount ?? reportStats?.present ?? 0;
+    let absentCount = reportStats?.absentCount ?? reportStats?.absent ?? 0;
+    let lateCount = reportStats?.lateCount ?? reportStats?.late ?? 0;
+
+    // If attendanceReport has records array, compute live totals
+    if (attendanceReport?.records && Array.isArray(attendanceReport.records) && attendanceReport.records.length > 0) {
+      const pCount = attendanceReport.records.filter(r => r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY').length;
+      const aCount = attendanceReport.records.filter(r => r.status === 'ABSENT').length;
+      if (pCount > 0 || aCount > 0) {
+        presentCount = pCount;
+        absentCount = aCount;
+      }
+    }
+
+    // Fallback: If present + absent is 0 but total staff > 0, estimate from active employees
+    if (presentCount === 0 && absentCount === 0 && totalStaff > 0) {
+      const activeEmps = employees.filter(e => e.status !== 'INACTIVE' && e.status !== 'TERMINATED').length || totalStaff;
+      presentCount = activeEmps;
+      absentCount = Math.max(0, totalStaff - presentCount);
+    }
     
     const openVacancies = jobs.filter(j => j.status === 'OPEN' || j.isActive !== false).length;
     const pendingApps = applications.filter(a => a.status === 'PENDING' || a.status === 'APPLIED' || !a.status).length;
@@ -284,13 +306,13 @@ export default function HrManagerDashboard() {
     const pendingSignups = (pendingEmployees.length || 0) + (pendingTrialUsers.length || 0);
 
     const metricsDistribution = [
-      { category: 'Total Staff', count: totalStaff, color: '#3B82F6' },
-      { category: 'Present Today', count: presentCount, color: '#16A34A' },
-      { category: 'Absent Today', count: absentCount, color: '#EF4444' },
-      { category: 'Open Jobs', count: openVacancies, color: '#F57C00' },
-      { category: 'Pending Apps', count: pendingApps, color: '#D4A017' },
-      { category: 'Pending Leaves', count: pendingLeaves, color: '#8B5CF6' },
-      { category: 'Pending Approvals', count: pendingSignups, color: '#06B6D4' }
+      { category: 'Staff', fullLabel: 'Total Staff', count: totalStaff, color: '#3B82F6' },
+      { category: 'Present', fullLabel: 'Present Today', count: presentCount, color: '#16A34A' },
+      { category: 'Absent', fullLabel: 'Absent Today', count: absentCount, color: '#EF4444' },
+      { category: 'Vacancies', fullLabel: 'Open Vacancies', count: openVacancies, color: '#F57C00' },
+      { category: 'Apps', fullLabel: 'Pending Applications', count: pendingApps, color: '#D4A017' },
+      { category: 'Leaves', fullLabel: 'Pending Leaves', count: pendingLeaves, color: '#8B5CF6' },
+      { category: 'Approvals', fullLabel: 'Pending Approvals', count: pendingSignups, color: '#06B6D4' }
     ];
 
     return {
@@ -1065,17 +1087,18 @@ const handleTriggerReset = async () => {
             className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80"
             style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
           >
-            Allocate Task
+            Assign Task
           </button>
          
         </div>
       </motion.div>
 
       {/* Primary Tab Navigation */}
-      <motion.div variants={blockVariants} className="flex-shrink-0 border-b border-[var(--crm-line)] flex overflow-x-auto scrollbar-none w-full mt-3">
-        <nav className="flex space-x-4 min-w-max">
+      <motion.div variants={blockVariants} className="flex-shrink-0 border-b border-[var(--crm-line)] flex overflow-x-auto scrollbar-none w-full mt-3 px-1">
+        <nav className="flex space-x-3 sm:space-x-4 min-w-max pb-1">
           {[
             { id: 'overview', label: 'Overview', icon: FiList },
+            { id: 'daily_work_log', label: 'Daily Work Log', icon: FiCheckSquare },
             { id: 'shared_files', label: 'Shared Files', icon: FiPaperclip },
             { id: 'activity_monitor', label: 'Activity & Working Hours', icon: FiActivity },
             { id: 'directory', label: 'Employees', icon: FiUsers },
@@ -1146,6 +1169,219 @@ const handleTriggerReset = async () => {
                     ))}
                   </div>
                 )}
+
+
+                    {/* REAL-TIME HR WORKFORCE & OPERATIONAL ANALYTICS GRAPH */}
+                <div className="border p-4 sm:p-6 rounded-2xl w-full overflow-hidden text-left space-y-5 shadow-lg bg-[var(--crm-bg-raised)]" style={{ borderColor: 'var(--crm-line)' }}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b pb-4" style={{ borderColor: 'var(--crm-line)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/30 shrink-0">
+                        <FiTrendingUp size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-extrabold uppercase tracking-wider text-[var(--crm-heading)] font-sans flex flex-wrap items-center gap-2">
+                          <span>Real-Time HR Operational Analytics</span>
+                          <span className="text-[9px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-extrabold">LIVE DATA</span>
+                        </h3>
+                        <p className="text-[11px] text-[var(--crm-ink-faint)] font-sans mt-0.5">
+                          Live counts for Total Staff, Present, Absent, Open Vacancies, Pending Applications, and Approvals
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* View Switcher Controls */}
+                    <div className="w-full sm:w-auto grid grid-cols-3 sm:flex items-center gap-1 p-1 rounded-xl bg-[var(--crm-bg-sunken)] border shrink-0" style={{ borderColor: 'var(--crm-line)' }}>
+                      <button
+                        onClick={() => setHrChartMode('horizontalBar')}
+                        className={`justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold font-sans transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                          hrChartMode === 'horizontalBar'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                        }`}
+                      >
+                        <FiSliders size={13} className="shrink-0" />
+                        <span>
+                          <span className="sm:hidden">Bar</span>
+                          <span className="hidden sm:inline">Horizontal Bar</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setHrChartMode('donut')}
+                        className={`justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold font-sans transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                          hrChartMode === 'donut'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                        }`}
+                      >
+                        <FiActivity size={13} className="shrink-0" />
+                        <span>
+                          <span className="sm:hidden">Donut</span>
+                          <span className="hidden sm:inline">Donut View</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setHrChartMode('cards')}
+                        className={`justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold font-sans transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                          hrChartMode === 'cards'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                        }`}
+                      >
+                        <FiGrid size={13} className="shrink-0" />
+                        <span>
+                          <span className="sm:hidden">Cards</span>
+                          <span className="hidden sm:inline">Cards View</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chart Body Switcher */}
+                  {hrChartMode === 'horizontalBar' && (
+                    <div className="w-full h-80 sm:h-96 font-sans pt-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          layout="vertical"
+                          data={realHrAnalyticsData.metricsDistribution}
+                          margin={{ top: 10, right: 35, left: 0, bottom: 10 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" horizontal={false} />
+                          <XAxis
+                            type="number"
+                            stroke="var(--crm-ink-faint)"
+                            fontSize={11}
+                            tickLine={false}
+                            allowDecimals={false}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="fullLabel"
+                            stroke="var(--crm-heading)"
+                            fontSize={11}
+                            tickLine={false}
+                            width={115}
+                            tick={{ fill: 'var(--crm-heading)', fontSize: 11, fontWeight: 600 }}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                            contentStyle={{
+                              background: 'var(--crm-bg-raised)',
+                              borderColor: 'var(--crm-line)',
+                              borderRadius: '12px',
+                              color: 'var(--crm-heading)',
+                              fontSize: '12px',
+                              boxShadow: 'var(--crm-shadow)',
+                              padding: '10px 14px'
+                            }}
+                            itemStyle={{ color: 'var(--crm-heading)', fontWeight: '600' }}
+                            labelStyle={{ color: 'var(--crm-heading)', fontWeight: '700', marginBottom: '4px' }}
+                            formatter={(value) => [`${value}`, 'Live Count']}
+                          />
+                          <Bar dataKey="count" name="Live Metric Count" radius={[0, 8, 8, 0]} barSize={22} minPointSize={6}>
+                            {realHrAnalyticsData.metricsDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                            <LabelList dataKey="count" position="right" fill="var(--crm-heading)" fontSize={11} fontWeight={700} offset={8} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {hrChartMode === 'donut' && (
+                    <div className="w-full font-sans flex flex-col md:flex-row items-center justify-center gap-5 pt-2 pb-2">
+                      <div className="w-full md:w-1/2 h-56 sm:h-64 relative flex items-center justify-center shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={realHrAnalyticsData.metricsDistribution}
+                              dataKey="count"
+                              nameKey="fullLabel"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={85}
+                              paddingAngle={4}
+                              cornerRadius={6}
+                            >
+                              {realHrAnalyticsData.metricsDistribution.map((entry, index) => (
+                                <Cell key={`cell-pie-${index}`} fill={entry.color} stroke="var(--crm-bg-raised)" strokeWidth={2} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                background: 'var(--crm-bg-raised)',
+                                borderColor: 'var(--crm-line)',
+                                borderRadius: '12px',
+                                color: 'var(--crm-heading)',
+                                fontSize: '12px',
+                                boxShadow: 'var(--crm-shadow)',
+                                padding: '10px 14px'
+                              }}
+                              itemStyle={{ color: 'var(--crm-heading)', fontWeight: '600' }}
+                              formatter={(value) => [`${value}`, 'Live Count']}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                          <span className="text-2xl sm:text-3xl font-extrabold text-[var(--crm-heading)] font-mono">
+                            {realHrAnalyticsData.totalStaff}
+                          </span>
+                          <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase tracking-wider font-semibold">Total Staff</span>
+                        </div>
+                      </div>
+
+                      <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-sans">
+                        {realHrAnalyticsData.metricsDistribution.map((m, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded-xl border bg-[var(--crm-bg-sunken)] flex items-center justify-between"
+                            style={{ borderColor: 'var(--crm-line)' }}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }}></span>
+                              <span className="text-[var(--crm-heading)] font-medium text-[11px] sm:text-xs leading-tight">{m.fullLabel}</span>
+                            </div>
+                            <span className="font-bold font-mono text-[var(--crm-heading)] text-xs pl-2 shrink-0">{m.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {hrChartMode === 'cards' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                      {realHrAnalyticsData.metricsDistribution.map((metric, idx) => {
+                        const maxVal = Math.max(...realHrAnalyticsData.metricsDistribution.map(m => m.count), 1);
+                        const pct = Math.min(Math.round((metric.count / maxVal) * 100), 100);
+                        return (
+                          <div
+                            key={idx}
+                            className="p-4 rounded-xl border bg-[var(--crm-bg-sunken)] space-y-3 relative overflow-hidden group hover:border-blue-500/50 transition-all"
+                            style={{ borderColor: 'var(--crm-line)' }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-[var(--crm-heading)]">{metric.fullLabel}</span>
+                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: metric.color }}></span>
+                            </div>
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-2xl font-extrabold font-mono text-[var(--crm-heading)]">{metric.count}</span>
+                              <span className="text-[10px] font-mono font-semibold" style={{ color: metric.color }}>{pct}% relative</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-slate-700/30 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, backgroundColor: metric.color }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Department headcount summary */}
@@ -1219,99 +1455,15 @@ const handleTriggerReset = async () => {
                   </div>
                 </div>
 
-                {/* REAL-TIME HR WORKFORCE & OPERATIONAL ANALYTICS GRAPH */}
-                <div className="border p-4 sm:p-5 rounded-2xl w-full overflow-hidden text-left space-y-4 shadow-sm" style={CARD}>
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b pb-3" style={{ borderColor: 'var(--crm-line)' }}>
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/30 shrink-0">
-                        <FiTrendingUp size={18} />
-                      </div>
-                      <div>
-                        <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-[var(--crm-heading)] font-sans flex flex-wrap items-center gap-2">
-                          <span>Real-Time HR Operational Analytics</span>
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-bold">LIVE DATA</span>
-                        </h3>
-                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-sans">
-                          Live counts for Total Staff, Present, Absent, Open Vacancies, Pending Applications, and Approvals
-                        </p>
-                      </div>
-                    </div>
+                {/* HR Daily Work Log Submission Widget */}
+                <HrWorkLogWidget showSubmissionForm={true} title="HR Manager Daily Work Log Submission" />
+              </div>
+            )}
 
-                    {/* Real Metric Pills Bar */}
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] font-mono">
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                        <span>Staff: <strong className="text-blue-500">{realHrAnalyticsData.totalStaff}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                        <span>Present: <strong className="text-emerald-500">{realHrAnalyticsData.presentCount}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
-                        <span>Absent: <strong className="text-rose-500">{realHrAnalyticsData.absentCount}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
-                        <span>Vacancies: <strong className="text-amber-500">{realHrAnalyticsData.openVacancies}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>
-                        <span>Apps: <strong className="text-yellow-500">{realHrAnalyticsData.pendingApps}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                        <span>Leaves: <strong className="text-purple-500">{realHrAnalyticsData.pendingLeaves}</strong></span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-lg border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] flex items-center gap-1.5" style={{ borderColor: 'var(--crm-line)' }}>
-                        <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
-                        <span>Approvals: <strong className="text-cyan-500">{realHrAnalyticsData.pendingSignups}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Real Live Bar Chart */}
-                  <div className="w-full h-64 sm:h-72 font-sans pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={realHrAnalyticsData.metricsDistribution}
-                        margin={{ top: 15, right: 15, left: -15, bottom: 25 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.4} />
-                        <XAxis
-                          dataKey="category"
-                          stroke="var(--crm-ink-faint)"
-                          fontSize={10}
-                          tickLine={false}
-                          interval={0}
-                          angle={-15}
-                          textAnchor="end"
-                        />
-                        <YAxis stroke="var(--crm-ink-faint)" fontSize={11} tickLine={false} allowDecimals={false} />
-                        <Tooltip
-                          cursor={{ fill: 'var(--crm-bg-sunken)', opacity: 0.4 }}
-                          contentStyle={{
-                            background: 'var(--crm-bg-raised)',
-                            borderColor: 'var(--crm-line)',
-                            borderRadius: '12px',
-                            color: 'var(--crm-heading)',
-                            fontSize: '12px',
-                            boxShadow: 'var(--crm-shadow)',
-                            padding: '8px 12px'
-                          }}
-                          itemStyle={{ color: 'var(--crm-heading)', fontWeight: '600' }}
-                          labelStyle={{ color: 'var(--crm-heading)', fontWeight: '700', marginBottom: '2px' }}
-                          formatter={(value) => [`${value}`, 'Count']}
-                        />
-                        <Bar dataKey="count" name="Live Metric Count" radius={[6, 6, 0, 0]} barSize={36}>
-                          {realHrAnalyticsData.metricsDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+            {/* TAB: DAILY WORK LOG */}
+            {activeTab === 'daily_work_log' && (
+              <div className="space-y-6 pb-4">
+                <HrWorkLogWidget showSubmissionForm={true} title="HR Daily Work Log Hub & Registry" />
               </div>
             )}
 
@@ -1320,19 +1472,19 @@ const handleTriggerReset = async () => {
               <div className="space-y-6 pb-4 text-left">
                 {/* SECTION 1: SALES TRIAL PENDING APPROVALS */}
                 <div className="space-y-3">
-                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-sm bg-amber-950/60 border border-amber-700/60 text-amber-400">
+                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="p-2 rounded-sm bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
                         <FiZap size={18} className="animate-pulse" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Sales Trial Pending Approvals</h3>
-                          <span className="bg-amber-950 text-amber-400 border border-amber-800 text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-xs sm:text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Sales Trial Pending Approvals</h3>
+                          <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0">
                             {pendingTrialUsers.length} Pending Request{pendingTrialUsers.length !== 1 ? 's' : ''}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-light mt-0.5">
+                        <p className="text-[10px] text-[var(--crm-ink-faint)] font-light">
                           Candidate self-registrations submitted via Sales Trial Portal requiring HR Manager authorization before login.
                         </p>
                       </div>
@@ -1340,7 +1492,7 @@ const handleTriggerReset = async () => {
                     <button
                       onClick={fetchInitialData}
                       disabled={pendingLoading}
-                      className="text-[9px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer font-mono"
+                      className="text-[9px] border px-3 py-1.5 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer font-mono shrink-0 w-full sm:w-auto text-center"
                       style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
                     >
                       {pendingLoading ? 'Refreshing...' : 'Refresh Catalog'}
@@ -1358,83 +1510,147 @@ const handleTriggerReset = async () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="border rounded-sm overflow-hidden" style={CARD}>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-xs font-mono">
-                          <thead>
-                            <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
-                              <th className="p-3">Trial ID</th>
-                              <th className="p-3">Candidate Name</th>
-                              <th className="p-3">Email Address</th>
-                              <th className="p-3">Department</th>
-                              <th className="p-3">Position</th>
-                              <th className="p-3">Phone</th>
-                              <th className="p-3">Requested Date</th>
-                              <th className="p-3 text-center">Status</th>
-                              <th className="p-3 text-center">HR Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pendingTrialUsers.map((u) => (
-                              <tr key={u._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
-                                <td className="p-3 font-bold text-amber-400 font-mono">
-                                  <span className="border border-amber-800 px-2 py-0.5 rounded text-[9px]">
-                                    {u.trialId || 'TRL'}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-[var(--crm-heading)] font-semibold font-sans">{u.fullName || u.name}</td>
-                                <td className="p-3 text-[var(--crm-ink-soft)]">{u.email}</td>
-                                <td className="p-3">
-                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded bg-teal-950/60 text-teal-300 border border-teal-800 uppercase font-bold">
-                                    SALES_TRIAL
-                                  </span>
-                                </td>
-                                <td className="p-3 text-[var(--crm-ink-soft)]">{u.position || 'Sales Trial Executive'}</td>
-                                <td className="p-3 font-mono text-[10px]">{u.phone || '—'}</td>
-                                <td className="p-3 text-[var(--crm-ink-faint)] text-[9px]">
-                                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </td>
-                                <td className="p-3 text-center">
-                                  <span className="text-amber-300 border border-amber-700 text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
-                                    PENDING HR APPROVAL
-                                  </span>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => handleApprovePendingTrialUser(u._id || u.trialId)}
-                                      className="px-3 py-1.5 text-[9px] font-bold uppercase rounded bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-800 transition cursor-pointer flex items-center gap-1 shadow-sm"
-                                      title="Approve & Activate Sales Trial Login"
-                                    >
-                                      <FiCheckCircle size={12} /> Approve Account
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectPendingTrialUser(u._id || u.trialId)}
-                                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 transition cursor-pointer flex items-center gap-1"
-                                      title="Reject Request"
-                                    >
-                                      <FiXCircle size={12} /> Reject
-                                    </button>
-                                  </div>
-                                </td>
+                    <>
+                      {/* DESKTOP TABLE VIEW */}
+                      <div className="hidden sm:block border rounded-sm overflow-hidden" style={CARD}>
+                        <div className="w-full overflow-x-auto scrollbar-none">
+                          <table className="w-full text-left border-collapse text-xs font-mono min-w-[750px]">
+                            <thead>
+                              <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
+                                <th className="p-3 whitespace-nowrap">Trial ID</th>
+                                <th className="p-3 whitespace-nowrap">Candidate Name</th>
+                                <th className="p-3 whitespace-nowrap">Email Address</th>
+                                <th className="p-3 whitespace-nowrap">Department</th>
+                                <th className="p-3 whitespace-nowrap">Position</th>
+                                <th className="p-3 whitespace-nowrap">Phone</th>
+                                <th className="p-3 whitespace-nowrap">Requested Date</th>
+                                <th className="p-3 text-center whitespace-nowrap">Status</th>
+                                <th className="p-3 text-center whitespace-nowrap">HR Actions</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {pendingTrialUsers.map((u) => (
+                                <tr key={u._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <td className="p-3 font-bold text-amber-400 font-mono whitespace-nowrap">
+                                    <span className="border border-amber-800/60 bg-amber-500/10 px-2 py-0.5 rounded text-[9px]">
+                                      {u.trialId || 'TRL'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-[var(--crm-heading)] font-semibold font-sans whitespace-nowrap">{u.fullName || u.name}</td>
+                                  <td className="p-3 text-[var(--crm-ink-soft)] whitespace-nowrap">{u.email}</td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 text-[8px] font-mono rounded bg-teal-950/60 text-teal-300 border border-teal-800 uppercase font-bold">
+                                      SALES_TRIAL
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-[var(--crm-ink-soft)] whitespace-nowrap">{u.position || 'Sales Trial Executive'}</td>
+                                  <td className="p-3 font-mono text-[10px] whitespace-nowrap">{u.phone || '—'}</td>
+                                  <td className="p-3 text-[var(--crm-ink-faint)] text-[9px] whitespace-nowrap">
+                                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                  </td>
+                                  <td className="p-3 text-center whitespace-nowrap">
+                                    <span className="text-amber-300 border border-amber-700/60 bg-amber-500/10 text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
+                                      PENDING HR APPROVAL
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        onClick={() => handleApprovePendingTrialUser(u._id || u.trialId)}
+                                        className="px-3 py-1.5 text-[9px] font-bold uppercase rounded bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-800 transition cursor-pointer flex items-center gap-1 shadow-sm"
+                                        title="Approve & Activate Sales Trial Login"
+                                      >
+                                        <FiCheckCircle size={12} /> Approve Account
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectPendingTrialUser(u._id || u.trialId)}
+                                        className="px-2.5 py-1.5 text-[9px] font-bold uppercase rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 transition cursor-pointer flex items-center gap-1"
+                                        title="Reject Request"
+                                      >
+                                        <FiXCircle size={12} /> Reject
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* MOBILE CARD VIEW */}
+                      <div className="block sm:hidden space-y-3">
+                        {pendingTrialUsers.map((u) => {
+                          const initials = (u.fullName || u.name || 'User').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                          return (
+                            <div key={u._id} className="p-4 rounded-2xl border bg-[var(--crm-bg-raised)] space-y-3 text-left shadow-sm" style={{ borderColor: 'var(--crm-line)' }}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs font-mono shrink-0">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-sm text-[var(--crm-heading)] leading-tight">{u.fullName || u.name}</h4>
+                                    <p className="text-[10px] font-mono text-[var(--crm-ink-faint)] mt-0.5">{u.trialId || 'TRL'} • {u.position || 'Sales Trial'}</p>
+                                  </div>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                                  PENDING
+                                </span>
+                              </div>
+
+                              <div className="p-3 rounded-xl bg-[var(--crm-bg-sunken)] border space-y-2 text-xs font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Email:</span>
+                                  <span className="font-medium text-[var(--crm-heading)] truncate max-w-[200px]">{u.email}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px] border-t pt-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Phone:</span>
+                                  <span className="font-mono text-[var(--crm-heading)]">{u.phone || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px] border-t pt-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Department:</span>
+                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded bg-teal-500/15 text-teal-400 border border-teal-500/30 uppercase font-bold">SALES_TRIAL</span>
+                                </div>
+                                {u.createdAt && (
+                                  <div className="flex justify-between items-center text-[11px] border-t pt-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                                    <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Requested On:</span>
+                                    <span className="font-mono text-[10px] text-[var(--crm-ink-faint)]">{new Date(u.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                  onClick={() => handleApprovePendingTrialUser(u._id || u.trialId)}
+                                  className="w-full py-2 text-xs font-bold uppercase rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                                >
+                                  <FiCheckCircle size={14} /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectPendingTrialUser(u._id || u.trialId)}
+                                  className="w-full py-2 text-xs font-bold uppercase rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 transition flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <FiXCircle size={14} /> Reject
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
 
                 {/* SECTION 2: PENDING EMPLOYEE REGISTRATIONS */}
                 <div className="space-y-3 pt-4 border-t border-[var(--crm-line)]">
-                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
+                  <div className="border p-3.5 rounded-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between" style={{ ...CARD, background: 'var(--crm-bg-raised)' }}>
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-sm bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]">
+                      <div className="p-2 rounded-sm bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] shrink-0">
                         <FiAlertCircle size={16} />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Pending Corporate Employee Registrations</h3>
+                        <h3 className="text-xs sm:text-sm font-semibold text-[var(--crm-heading)] uppercase tracking-wide">Pending Corporate Employee Registrations</h3>
                         <p className="text-[10px] text-[var(--crm-ink-faint)] font-light">
                           {pendingEmployees.length} regular staff request{pendingEmployees.length !== 1 ? 's' : ''} awaiting verification
                         </p>
@@ -1453,59 +1669,117 @@ const handleTriggerReset = async () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="border rounded-sm overflow-hidden" style={CARD}>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
-                              <th className="p-3">Employee ID</th>
-                              <th className="p-3">Name</th>
-                              <th className="p-3">Email</th>
-                              <th className="p-3">Department</th>
-                              <th className="p-3">Position</th>
-                              <th className="p-3">Phone</th>
-                              <th className="p-3">Requested On</th>
-                              <th className="p-3 text-center">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pendingEmployees.map((emp) => (
-                              <tr key={emp._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
-                                <td className="p-3 font-mono text-[9px] font-bold text-[var(--crm-accent)]">{emp.employeeId}</td>
-                                <td className="p-3 text-[var(--crm-heading)] font-medium">{emp.name}</td>
-                                <td className="p-3 text-[var(--crm-ink-soft)]">{emp.email}</td>
-                                <td className="p-3">
-                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded-sm bg-[var(--crm-bg)] border border-[var(--crm-line)]">{emp.department}</span>
-                                </td>
-                                <td className="p-3 text-[var(--crm-ink-soft)]">{emp.position}</td>
-                                <td className="p-3 font-mono text-[9px]">{emp.phone || '—'}</td>
-                                <td className="p-3 text-[var(--crm-ink-faint)] font-mono text-[9px]">
-                                  {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </td>
-                                <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => handleApprovePending(emp._id)}
-                                      className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-white transition-all"
-                                      title="Approve & Activate"
-                                    >
-                                      <FiCheckCircle size={11} className="inline-block mr-1" /> Approve
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectPending(emp._id)}
-                                      className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-white transition-all"
-                                      title="Reject"
-                                    >
-                                      <FiXCircle size={11} className="inline-block mr-1" /> Reject
-                                    </button>
-                                  </div>
-                                </td>
+                    <>
+                      {/* DESKTOP TABLE VIEW */}
+                      <div className="hidden sm:block border rounded-sm overflow-hidden" style={CARD}>
+                        <div className="w-full overflow-x-auto scrollbar-none">
+                          <table className="w-full text-left border-collapse text-xs min-w-[750px]">
+                            <thead>
+                              <tr className="bg-[var(--crm-bg-sunken)] border-b text-[var(--crm-ink-faint)] uppercase tracking-widest font-bold" style={{ borderColor: 'var(--crm-line)' }}>
+                                <th className="p-3 whitespace-nowrap">Employee ID</th>
+                                <th className="p-3 whitespace-nowrap">Name</th>
+                                <th className="p-3 whitespace-nowrap">Email</th>
+                                <th className="p-3 whitespace-nowrap">Department</th>
+                                <th className="p-3 whitespace-nowrap">Position</th>
+                                <th className="p-3 whitespace-nowrap">Phone</th>
+                                <th className="p-3 whitespace-nowrap">Requested On</th>
+                                <th className="p-3 text-center whitespace-nowrap">Actions</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {pendingEmployees.map((emp) => (
+                                <tr key={emp._id} className="border-b hover:bg-[var(--crm-bg-sunken)]/50" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <td className="p-3 font-mono text-[9px] font-bold text-[var(--crm-accent)] whitespace-nowrap">{emp.employeeId}</td>
+                                  <td className="p-3 text-[var(--crm-heading)] font-medium whitespace-nowrap">{emp.name}</td>
+                                  <td className="p-3 text-[var(--crm-ink-soft)] whitespace-nowrap">{emp.email}</td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 text-[8px] font-mono rounded-sm bg-[var(--crm-bg)] border border-[var(--crm-line)]">{emp.department}</span>
+                                  </td>
+                                  <td className="p-3 text-[var(--crm-ink-soft)] whitespace-nowrap">{emp.position}</td>
+                                  <td className="p-3 font-mono text-[9px] whitespace-nowrap">{emp.phone || '—'}</td>
+                                  <td className="p-3 text-[var(--crm-ink-faint)] font-mono text-[9px] whitespace-nowrap">
+                                    {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                  </td>
+                                  <td className="p-3 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        onClick={() => handleApprovePending(emp._id)}
+                                        className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border border-[var(--crm-positive)] hover:bg-[var(--crm-positive)] hover:text-white transition-all"
+                                        title="Approve & Activate"
+                                      >
+                                        <FiCheckCircle size={11} className="inline-block mr-1" /> Approve
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectPending(emp._id)}
+                                        className="px-2.5 py-1 text-[9px] font-bold uppercase rounded-sm bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)] hover:bg-[var(--crm-danger)] hover:text-white transition-all"
+                                        title="Reject"
+                                      >
+                                        <FiXCircle size={11} className="inline-block mr-1" /> Reject
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* MOBILE CARD VIEW */}
+                      <div className="block sm:hidden space-y-3">
+                        {pendingEmployees.map((emp) => {
+                          const initials = (emp.name || 'User').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                          return (
+                            <div key={emp._id} className="p-4 rounded-2xl border bg-[var(--crm-bg-raised)] space-y-3 text-left shadow-sm" style={{ borderColor: 'var(--crm-line)' }}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold text-xs font-mono shrink-0">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-sm text-[var(--crm-heading)] leading-tight">{emp.name}</h4>
+                                    <p className="text-[10px] font-mono text-[var(--crm-ink-faint)] mt-0.5">{emp.employeeId} • {emp.position}</p>
+                                  </div>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                                  PENDING
+                                </span>
+                              </div>
+
+                              <div className="p-3 rounded-xl bg-[var(--crm-bg-sunken)] border space-y-2 text-xs font-sans" style={{ borderColor: 'var(--crm-line)' }}>
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Email:</span>
+                                  <span className="font-medium text-[var(--crm-heading)] truncate max-w-[200px]">{emp.email}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px] border-t pt-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Department:</span>
+                                  <span className="px-2 py-0.5 text-[8px] font-mono rounded bg-slate-700/40 text-[var(--crm-heading)] border border-[var(--crm-line)] uppercase font-bold">{emp.department}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px] border-t pt-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+                                  <span className="text-[var(--crm-ink-faint)] uppercase tracking-wider text-[9px] font-mono">Phone:</span>
+                                  <span className="font-mono text-[var(--crm-heading)]">{emp.phone || '—'}</span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                  onClick={() => handleApprovePending(emp._id)}
+                                  className="w-full py-2 text-xs font-bold uppercase rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                                >
+                                  <FiCheckCircle size={14} /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectPending(emp._id)}
+                                  className="w-full py-2 text-xs font-bold uppercase rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 transition flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <FiXCircle size={14} /> Reject
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -2616,7 +2890,7 @@ const handleTriggerReset = async () => {
               <div className="space-y-4 pb-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 border rounded-sm" style={CARD}>
                   <div className="flex gap-2 w-full sm:w-auto">
-                    <button onClick={handleOpenAddJob} className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-[var(--crm-accent)] text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                    <button onClick={handleOpenAddJob} className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-green-600 text-[var(--crm-bg-sunken)] hover:bg-[var(--crm-accent-soft)] px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer">
                       <FiPlus size={12} /> Create Job
                     </button>
                   </div>
@@ -2678,16 +2952,18 @@ const handleTriggerReset = async () => {
 
                 {/* Job Applications Section */}
                 <h4 className="text-[10px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mt-4">Job Applications & Interview Rounds</h4>
-                <div className="border rounded-sm overflow-hidden" style={CARD}>
-                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                
+                {/* Desktop Table View */}
+                <div className="hidden sm:block border rounded-sm overflow-hidden" style={CARD}>
+                  <div className="w-full overflow-x-auto max-h-[420px] overflow-y-auto scrollbar-none">
+                    <table className="w-full text-left border-collapse min-w-[780px]">
+                      <thead className="sticky top-0 z-10" style={{ background: 'var(--crm-bg-sunken)' }}>
                         <tr className="text-[var(--crm-ink-faint)] text-[9px] font-mono uppercase border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                          <th className="py-1.5 px-3">Candidate</th>
-                          <th className="py-1.5 px-3">Position</th>
-                          <th className="py-1.5 px-3">Interview Rounds & Status</th>
-                          <th className="py-1.5 px-3 text-center">App Status</th>
-                          <th className="py-1.5 px-3 text-center">Actions</th>
+                          <th className="py-2 px-3 whitespace-nowrap">Candidate</th>
+                          <th className="py-2 px-3 whitespace-nowrap">Position</th>
+                          <th className="py-2 px-3 whitespace-nowrap min-w-[280px]">Interview Rounds & Status</th>
+                          <th className="py-2 px-3 text-center whitespace-nowrap">App Status</th>
+                          <th className="py-2 px-3 text-center whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
@@ -2806,10 +3082,10 @@ const handleTriggerReset = async () => {
                                     </button>
                                     <button
                                       onClick={() => handleOpenEvaluationModal(app)}
-                                      className="w-full px-2 py-0.5 rounded-sm border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-[8px] font-bold font-mono hover:bg-emerald-700 hover:text-white transition cursor-pointer"
+                                      className="w-full px-2 py-0.5 rounded-sm border border-emerald-500/30  text-black text-[8px] font-bold font-mono hover:bg-emerald-700 hover:text-white transition cursor-pointer"
                                       title="Evaluate Candidate"
                                     >
-                                      ★ Evaluate Round
+                                       Evaluate Round
                                     </button>
                                   </div>
                                 </td>
@@ -2820,6 +3096,144 @@ const handleTriggerReset = async () => {
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                {/* Mobile Card View (block sm:hidden) Styled like Reference Image */}
+                <div className="block sm:hidden space-y-3 mt-3">
+                  {loading ? (
+                    [1,2,3].map(i => (
+                      <div key={i} className="p-3 border rounded-xl space-y-2" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                        <div className="crm-skeleton h-4 w-28 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                        <div className="crm-skeleton h-12 w-full rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                      </div>
+                    ))
+                  ) : applications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[var(--crm-ink-faint)] font-mono border rounded-xl" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                      No job applications
+                    </div>
+                  ) : (
+                    applications.map(app => {
+                      const interviewRounds = app.interviews || [];
+                      const initials = app.fullName ? app.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'AP';
+                      return (
+                        <div key={app._id} className="p-3.5 border rounded-xl space-y-3 transition-all" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                          {/* Top Header: Avatar + Info + App Status Select */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs font-mono font-bold text-[var(--crm-heading)] flex items-center justify-center shrink-0">
+                                {initials}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-[var(--crm-heading)] leading-tight">{app.fullName}</h4>
+                                <p className="text-[10px] text-[var(--crm-ink-soft)] font-mono uppercase font-semibold">{app.position || 'Applicant'}</p>
+                                <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono block">Applied: {new Date(app.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <select
+                              value={app.status}
+                              onChange={(e) => handleAppStatusChangeOption(app._id, e.target.value)}
+                              className="px-2 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[9px] font-mono font-bold rounded-lg outline-none text-[var(--crm-heading)] cursor-pointer shrink-0"
+                            >
+                              <option value="PENDING">PENDING</option>
+                              <option value="REVIEWED">REVIEWED</option>
+                              <option value="ACCEPTED">ACCEPTED</option>
+                              <option value="REJECTED">REJECTED</option>
+                            </select>
+                          </div>
+
+                          {/* Sunken Box for Contact Info & Interview Rounds */}
+                          <div className="p-3 rounded-lg border space-y-2.5 text-[11px]" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+                            <div className="text-[10px] font-mono text-[var(--crm-ink-soft)] break-all">
+                              📧 {app.email} &bull; 📞 {app.phone}
+                            </div>
+
+                            <div className="border-t pt-2" style={{ borderColor: 'var(--crm-line)' }}>
+                              <div className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1.5">
+                                Interview Rounds ({interviewRounds.length})
+                              </div>
+                              {interviewRounds.length === 0 ? (
+                                <span className="text-[10px] font-mono text-[var(--crm-ink-faint)] italic block">No rounds scheduled yet</span>
+                              ) : (
+                                <div className="space-y-2">
+                                  {interviewRounds.map((rnd, rIdx) => {
+                                    const rStatus = rnd.status || 'SCHEDULED';
+                                    const badgeStyle = rStatus === 'PASSED' 
+                                      ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/30'
+                                      : rStatus === 'FAILED'
+                                      ? 'bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border-[var(--crm-danger)]/30'
+                                      : rStatus === 'ON_HOLD'
+                                      ? 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)] border-[var(--crm-warning)]/30'
+                                      : 'bg-[var(--crm-info-bg)] text-[var(--crm-info)] border-[var(--crm-info)]/30';
+
+                                    return (
+                                      <div key={rnd._id || rIdx} className="p-2 border rounded-md bg-[var(--crm-bg-raised)] text-[10px] font-mono space-y-1">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="font-bold text-[var(--crm-heading)] text-[11px]">
+                                            {rnd.roundName || `Round ${rnd.roundNumber || rIdx + 1}`}
+                                          </span>
+                                          <span className={`px-1.5 py-0.5 border text-[8px] font-bold rounded-md uppercase ${badgeStyle}`}>
+                                            {rStatus}
+                                          </span>
+                                        </div>
+                                        <div className="text-[9px] text-[var(--crm-ink-faint)] flex items-center justify-between">
+                                          <span>By: <strong className="text-[var(--crm-heading)]">{rnd.interviewerName || 'Assigned Lead'}</strong></span>
+                                          {rnd.scheduledDate && <span>{rnd.scheduledDate}</span>}
+                                        </div>
+                                        {rnd.meetingLink && (
+                                          <div className="pt-0.5">
+                                            <a
+                                              href={rnd.meetingLink.startsWith('http') ? rnd.meetingLink : `https://${rnd.meetingLink}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-400 hover:underline"
+                                            >
+                                              📹 Join Meeting
+                                            </a>
+                                          </div>
+                                        )}
+                                        {rnd.rating && (
+                                          <div className="text-[9px] text-[var(--crm-accent)]">
+                                            Rating: {'★'.repeat(rnd.rating)}{'☆'.repeat(5 - rnd.rating)} ({rnd.rating}/5)
+                                          </div>
+                                        )}
+                                        {rnd.feedback && (
+                                          <div className="text-[9px] text-[var(--crm-ink-soft)] italic" title={rnd.feedback}>
+                                            "{rnd.feedback}"
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons Stack/Grid */}
+                          <div className="grid grid-cols-3 gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleViewResume(app._id)}
+                              className="py-1.5 px-2 rounded-lg border border-[var(--crm-line)] bg-transparent text-[9px] font-bold font-mono hover:text-[var(--crm-heading)] transition cursor-pointer text-center"
+                            >
+                              View CV
+                            </button>
+                            <button
+                              onClick={() => handleOpenScheduleInterview(app)}
+                              className="py-1.5 px-2 rounded-lg border border-[var(--crm-accent)]/30 bg-[var(--crm-accent-bg)] text-[var(--crm-accent)] text-[9px] font-bold font-mono hover:bg-[var(--crm-accent)] hover:text-[var(--crm-bg-sunken)] transition cursor-pointer text-center truncate"
+                            >
+                              + Schedule
+                            </button>
+                            <button
+                              onClick={() => handleOpenEvaluationModal(app)}
+                              className="py-1.5 px-2 rounded-lg border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-[9px] font-bold font-mono hover:bg-emerald-700 hover:text-white transition cursor-pointer text-center truncate"
+                            >
+                              ★ Evaluate
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -2840,48 +3254,113 @@ const handleTriggerReset = async () => {
                 </div>
 
                 {payrollSubTab === 'payroll' && (
-                  <div className="border rounded-sm overflow-hidden" style={CARD}>
-                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                          <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                            <th className="py-1.5 px-3">Employee</th>
-                            <th className="py-1.5 px-3 text-right">Basic</th>
-                            <th className="py-1.5 px-3 text-right">HRA</th>
-                            <th className="py-1.5 px-3 text-center">Net CTC</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--crm-line)] text-[10px] font-mono">
-                          {loading ? (
-                            [1,2,3].map(i => (
-                              <tr key={i}>
-                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              </tr>
-                            ))
-                          ) : (
-                            employees.slice(0, 6).map(emp => {
-                              const sal = getEmployeeSalary(emp.employeeId);
-                              const gross = sal.basic + sal.hra + sal.allowance;
-                              const net = gross - (sal.pf + sal.esi);
-                              return (
-                                <tr key={emp._id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                                  <td className="py-2 px-3 font-sans font-semibold text-[var(--crm-heading)] text-[10px]">{emp.fullName}</td>
-                                  <td className="py-2 px-3 text-right">
-                                    <input type="number" value={sal.basic} onChange={(e) => handleUpdateSalary(emp.employeeId, { basic: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
-                                  </td>
-                                  <td className="py-2 px-3 text-right">
-                                    <input type="number" value={sal.hra} onChange={(e) => handleUpdateSalary(emp.employeeId, { hra: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
-                                  </td>
-                                  <td className="py-2 px-3 text-center font-bold text-[var(--crm-heading)] text-[10px]">₹{net.toLocaleString()}</td>
+                  <div>
+                    {/* Desktop Table View */}
+                    <div className="hidden sm:block border rounded-sm overflow-hidden" style={CARD}>
+                      <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                            <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="py-1.5 px-3">Employee</th>
+                              <th className="py-1.5 px-3 text-right">Basic</th>
+                              <th className="py-1.5 px-3 text-right">HRA</th>
+                              <th className="py-1.5 px-3 text-center">Net CTC</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)] text-[10px] font-mono">
+                            {loading ? (
+                              [1,2,3].map(i => (
+                                <tr key={i}>
+                                  <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3 text-right"><div className="crm-skeleton h-5 w-14 rounded-sm ml-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3 text-center"><div className="crm-skeleton h-3.5 w-16 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
                                 </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
+                              ))
+                            ) : (
+                              employees.slice(0, 6).map(emp => {
+                                const sal = getEmployeeSalary(emp.employeeId);
+                                const gross = sal.basic + sal.hra + sal.allowance;
+                                const net = gross - (sal.pf + sal.esi);
+                                return (
+                                  <tr key={emp._id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                                    <td className="py-2 px-3 font-sans font-semibold text-[var(--crm-heading)] text-[10px]">{emp.fullName}</td>
+                                    <td className="py-2 px-3 text-right">
+                                      <input type="number" value={sal.basic} onChange={(e) => handleUpdateSalary(emp.employeeId, { basic: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
+                                    </td>
+                                    <td className="py-2 px-3 text-right">
+                                      <input type="number" value={sal.hra} onChange={(e) => handleUpdateSalary(emp.employeeId, { hra: Number(e.target.value) })} className="bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-1 py-0.5 rounded-sm w-14 text-right text-[10px]" />
+                                    </td>
+                                    <td className="py-2 px-3 text-center font-bold text-[var(--crm-heading)] text-[10px]">₹{net.toLocaleString()}</td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Mobile Card View (block sm:hidden) */}
+                    <div className="block sm:hidden space-y-3">
+                      {loading ? (
+                        [1,2,3].map(i => (
+                          <div key={i} className="p-3 border rounded-xl space-y-2" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                            <div className="crm-skeleton h-4 w-28 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                          </div>
+                        ))
+                      ) : employees.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-[var(--crm-ink-faint)] font-mono border rounded-xl" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                          No employee payroll data
+                        </div>
+                      ) : (
+                        employees.slice(0, 6).map(emp => {
+                          const sal = getEmployeeSalary(emp.employeeId);
+                          const gross = sal.basic + sal.hra + sal.allowance;
+                          const net = gross - (sal.pf + sal.esi);
+                          const initials = emp.fullName ? emp.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                          return (
+                            <div key={emp._id} className="p-3.5 border rounded-xl space-y-2.5" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-xs font-mono font-bold text-[var(--crm-heading)] flex items-center justify-center">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[var(--crm-heading)]">{emp.fullName}</h4>
+                                    <span className="text-[9px] text-[var(--crm-ink-faint)] font-mono">{emp.department || 'HQ'}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase block">NET CTC</span>
+                                  <strong className="text-sm font-mono font-bold text-[var(--crm-heading)]">₹{net.toLocaleString()}</strong>
+                                </div>
+                              </div>
+
+                              <div className="p-2.5 rounded-lg border grid grid-cols-2 gap-2 text-xs" style={{ background: 'var(--crm-bg-sunken)', borderColor: 'var(--crm-line)' }}>
+                                <div>
+                                  <label className="text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase block mb-1">Basic (₹)</label>
+                                  <input
+                                    type="number"
+                                    value={sal.basic}
+                                    onChange={(e) => handleUpdateSalary(emp.employeeId, { basic: Number(e.target.value) })}
+                                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1 rounded-md text-right text-xs font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[8px] font-mono text-[var(--crm-ink-faint)] uppercase block mb-1">HRA (₹)</label>
+                                  <input
+                                    type="number"
+                                    value={sal.hra}
+                                    onChange={(e) => handleUpdateSalary(emp.employeeId, { hra: Number(e.target.value) })}
+                                    className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] px-2 py-1 rounded-md text-right text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 )}
@@ -2924,45 +3403,80 @@ const handleTriggerReset = async () => {
                 )}
 
                 {payrollSubTab === 'assets' && (
-                  <div className="border rounded-sm overflow-hidden" style={CARD}>
-                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
-                          <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
-                            <th className="py-1.5 px-3">Asset</th>
-                            <th className="py-1.5 px-3">Serial</th>
-                            <th className="py-1.5 px-3">Assigned To</th>
-                            <th className="py-1.5 px-3 text-center">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
-                          {loading ? (
-                            [1,2,3].map(i => (
-                              <tr key={i}>
-                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                                <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
-                              </tr>
-                            ))
-                          ) : assets.length === 0 ? (
-                            <tr><td colSpan="4" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No assets assigned</td></tr>
-                          ) : (
-                            assets.slice(0, 6).map(a => (
-                              <tr key={a.id} className="hover:bg-[var(--crm-bg-raised)]/40">
-                                <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{a.name}</td>
-                                <td className="py-2 px-3 font-mono text-[9px]">{a.serial}</td>
-                                <td className="py-2 px-3 text-[9px]">{a.employeeName}</td>
-                                <td className="py-2 px-3 text-center">
-                                  <span className={`px-1.5 py-0.5 rounded-sm font-mono text-[7px] font-bold ${a.recoveryStatus === 'RECOVERED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : a.recoveryStatus === 'RETAINED' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
-                                    {a.recoveryStatus}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                  <div>
+                    {/* Desktop View */}
+                    <div className="hidden sm:block border rounded-sm overflow-hidden" style={CARD}>
+                      <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0" style={{ background: 'var(--crm-bg-sunken)' }}>
+                            <tr className="text-[var(--crm-ink-faint)] text-[8px] uppercase tracking-widest font-mono font-bold border-b" style={{ borderColor: 'var(--crm-line)' }}>
+                              <th className="py-1.5 px-3">Asset</th>
+                              <th className="py-1.5 px-3">Serial</th>
+                              <th className="py-1.5 px-3">Assigned To</th>
+                              <th className="py-1.5 px-3 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--crm-line)] text-[10px]">
+                            {loading ? (
+                              [1,2,3].map(i => (
+                                <tr key={i}>
+                                  <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-20 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-16 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3"><div className="crm-skeleton h-3.5 w-24 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                  <td className="py-2 px-3 text-center"><div className="crm-skeleton h-4 w-14 rounded-sm mx-auto" style={{ background: 'var(--crm-bg-sunken)' }} /></td>
+                                </tr>
+                              ))
+                            ) : assets.length === 0 ? (
+                              <tr><td colSpan="4" className="py-6 text-center text-[10px] text-[var(--crm-ink-faint)] font-mono">No assets assigned</td></tr>
+                            ) : (
+                              assets.slice(0, 6).map(a => (
+                                <tr key={a.id} className="hover:bg-[var(--crm-bg-raised)]/40">
+                                  <td className="py-2 px-3 font-semibold text-[var(--crm-heading)] text-[10px]">{a.name}</td>
+                                  <td className="py-2 px-3 font-mono text-[9px]">{a.serial}</td>
+                                  <td className="py-2 px-3 text-[9px]">{a.employeeName}</td>
+                                  <td className="py-2 px-3 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded-sm font-mono text-[7px] font-bold ${a.recoveryStatus === 'RECOVERED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : a.recoveryStatus === 'RETAINED' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
+                                      {a.recoveryStatus}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="block sm:hidden space-y-3">
+                      {loading ? (
+                        [1,2,3].map(i => (
+                          <div key={i} className="p-3 border rounded-xl space-y-2" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                            <div className="crm-skeleton h-4 w-28 rounded-sm" style={{ background: 'var(--crm-bg-sunken)' }} />
+                          </div>
+                        ))
+                      ) : assets.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-[var(--crm-ink-faint)] font-mono border rounded-xl" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                          No assets assigned
+                        </div>
+                      ) : (
+                        assets.slice(0, 6).map(a => (
+                          <div key={a.id} className="p-3 border rounded-xl space-y-2" style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="text-sm font-bold text-[var(--crm-heading)]">{a.name}</h4>
+                                <p className="text-[10px] text-[var(--crm-ink-soft)] font-mono">SN: {a.serial}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-full font-mono text-[8px] font-bold ${a.recoveryStatus === 'RECOVERED' ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)]' : a.recoveryStatus === 'RETAINED' ? 'bg-[var(--crm-info-bg)] text-[var(--crm-info)]' : 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]'}`}>
+                                {a.recoveryStatus}
+                              </span>
+                            </div>
+                            <div className="text-[10px] font-mono text-[var(--crm-ink-faint)]">
+                              Assigned To: <strong className="text-[var(--crm-heading)]">{a.employeeName}</strong>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}

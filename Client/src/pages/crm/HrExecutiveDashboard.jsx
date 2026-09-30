@@ -35,6 +35,7 @@ import {
   FiPaperclip
 } from 'react-icons/fi';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
+import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -870,6 +871,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
         <nav className="flex space-x-6 min-w-max">
           {[
             { id: 'tasks', label: `My Tasks (${pendingTasksCount})`, icon: FiCheckSquare },
+            { id: 'daily_work_log', label: 'Daily Work Log', icon: FiCheckSquare },
             { id: 'shared-files', label: 'Received Shared Files', icon: FiPaperclip },
             { id: 'interviews', label: `Interview Board (${pendingInterviewsCount})`, icon: FiCalendar },
             { id: 'telemetry', label: 'Documents Telemetry', icon: FiShield },
@@ -901,6 +903,13 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
           transition={{ duration: 0.2 }}
           className="space-y-6 text-left"
         >
+          {/* TAB: DAILY WORK LOG */}
+          {activeTab === 'daily_work_log' && (
+            <div className="space-y-6">
+              <HrWorkLogWidget showSubmissionForm={true} title="HR Executive Daily Work Log Submission" />
+            </div>
+          )}
+
           {/* TAB: SHARED FILES */}
           {activeTab === 'shared-files' && (
             <div className="space-y-6">

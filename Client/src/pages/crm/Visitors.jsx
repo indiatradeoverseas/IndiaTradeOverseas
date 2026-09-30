@@ -230,27 +230,27 @@ export default function Visitors() {
                     <div className="flex flex-wrap items-center gap-2 font-sans">
                         <button
                             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all cursor-pointer border shadow-md"
                             style={dateFilterMode === 'ALL'
-                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                ? { background: '#2563eb', color: '#ffffff', borderColor: '#00c6ff' }
                                 : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             All Dates
                         </button>
                         <button
                             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all cursor-pointer border shadow-md"
                             style={dateFilterMode === 'TODAY'
-                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                ? { background: '#2563eb', color: '#ffffff', borderColor: '#00c6ff' }
                                 : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             Today
                         </button>
                         <button
                             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer border"
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all cursor-pointer border shadow-md"
                             style={dateFilterMode === 'YESTERDAY'
-                                ? { background: 'var(--crm-accent)', color: 'var(--crm-bg)', borderColor: 'var(--crm-accent)' }
+                                ? { background: '#2563eb', color: '#ffffff', borderColor: '#00c6ff' }
                                 : { background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-soft)', borderColor: 'var(--crm-line)' }}
                         >
                             Yesterday

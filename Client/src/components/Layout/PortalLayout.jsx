@@ -7,6 +7,7 @@ import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
 import NotificationDropdown from '../common/NotificationDropdown';
 import AiChatMessenger from '../common/AiChatMessenger';
+import { ItcLogoBadge } from '../common/ItcLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi } from '../../api/attendance';
 import toast from 'react-hot-toast';
@@ -163,7 +164,7 @@ export default function PortalLayout({ children }) {
       {/* MOBILE TOP BAR */}
       <div
         className={`md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl ${isTransportManagerRoute ? 'transport-mobile-topbar' : ''}`}
-        style={{ background: 'color-mix(in srgb, var(--crm-nav-bg) 94%, transparent)', borderColor: 'var(--crm-line)' }}
+        style={{ background: 'color-mix(in srgb, var(--crm-bg-raised) 96%, transparent)', borderColor: 'var(--crm-line)' }}
       >
         <div className="flex min-h-[54px] items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
           <button
@@ -188,12 +189,12 @@ export default function PortalLayout({ children }) {
           </button>
 
           <div
-            className="min-w-0 flex-1 text-left sm:text-center px-1 overflow-hidden"
+            className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-max"
             style={{ fontFamily: 'var(--crm-font-display)' }}
           >
             <span
-              className="font-sans font-extrabold tracking-wider text-[10px] sm:text-[13px] uppercase whitespace-nowrap block overflow-hidden text-ellipsis"
-              style={{ color: 'var(--crm-heading)' }}
+              className="font-extrabold tracking-tight sm:tracking-wider text-[12px] sm:text-[14px] uppercase whitespace-nowrap block"
+              style={{ color: 'var(--crm-heading)', fontFamily: 'var(--crm-font-display)' }}
             >
               India Trade Center
             </span>
@@ -305,13 +306,16 @@ export default function PortalLayout({ children }) {
             className="hidden md:flex min-h-[56px] shrink-0 items-center justify-between gap-4 border-b px-5 lg:px-8 py-2.5 backdrop-blur-xl"
             style={{ borderColor: 'var(--crm-line)', background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)' }}
           >
-            <div className="min-w-0">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--crm-heading)' }}>
-                India Trade Center
-              </div>
-              <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
-                <span className="font-semibold" style={{ color: 'var(--crm-heading)' }}>CRM Workspace</span>
-                {user && <span className="hidden lg:inline">· {user.department || user.role || 'Authenticated user'}</span>}
+            <div className="min-w-0 flex items-center gap-2.5">
+              {/* <ItcLogoBadge size="sm" /> */}
+              <div>
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: 'var(--crm-heading)' }}>
+                  India Trade Center
+                </div>
+                <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--crm-heading)' }}>CRM Workspace</span>
+                  {user && <span className="hidden lg:inline">· {user.department || user.role || 'Authenticated user'}</span>}
+                </div>
               </div>
             </div>
 
