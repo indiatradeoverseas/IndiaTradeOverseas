@@ -124,6 +124,10 @@ export default function Home() {
   const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [isMobileCarousel, setIsMobileCarousel] = useState(false);
+  const [mobileDivisionIndex, setMobileDivisionIndex] = useState(0);
+  const [mobileSwipeDirection, setMobileSwipeDirection] = useState(1);
+  const mobileTouchStart = useRef(null);
+  const mobileLastSwipeAt = useRef(0);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openFoodModal, setOpenFoodModal] = useState(false);
   const [openStoneModal, setOpenStoneModal] = useState(false);
@@ -181,6 +185,36 @@ export default function Home() {
       window.removeEventListener('resize', checkScreenSize);
     };
   }, []);
+
+  // ----------------------------------------------------------
+  // EXPLORE PRODUCTS: MOBILE SWIPE (homepage hero is untouched)
+  // ----------------------------------------------------------
+
+  const handleMobileCarouselTouchStart = (event) => {
+    const touch = event.touches[0];
+    mobileTouchStart.current = touch
+      ? { x: touch.clientX, y: touch.clientY }
+      : null;
+  };
+
+  const handleMobileCarouselTouchEnd = (event) => {
+    if (!mobileTouchStart.current || !event.changedTouches[0]) return;
+
+    const { x, y } = mobileTouchStart.current;
+    mobileTouchStart.current = null;
+    const deltaX = event.changedTouches[0].clientX - x;
+    const deltaY = event.changedTouches[0].clientY - y;
+
+    // Vertical movement is not a carousel swipe.
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    const direction = deltaX < 0 ? 1 : -1;
+    setMobileSwipeDirection(direction);
+    mobileLastSwipeAt.current = Date.now();
+    setMobileDivisionIndex((index) =>
+      (index + direction + DIVISIONS.length) % DIVISIONS.length
+    );
+  };
 
   // ==========================================================
   // DATA
@@ -565,26 +599,31 @@ export default function Home() {
               className="relative"
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: isMobileCarousel ? 190 : 260,
-                height: isMobileCarousel ? 280 : 400,
-                perspective: isMobileCarousel ? 1000 : 1400
+                width: isMobileCarousel ? 'min(240px, calc(100vw - 56px))' : 260,
+                height: isMobileCarousel ? 340 : 400,
+                perspective: isMobileCarousel ? 1000 : 1400,
+                touchAction: isMobileCarousel ? 'pan-y' : 'auto'
               }}
             >
 
               <div
                 className="absolute inset-0"
+                onTouchStart={isMobileCarousel ? handleMobileCarouselTouchStart : undefined}
+                onTouchEnd={isMobileCarousel ? handleMobileCarouselTouchEnd : undefined}
+                onTouchCancel={() => { mobileTouchStart.current = null; }}
                 style={{
                   transformStyle: 'preserve-3d',
-                  animationName: 'solutions-carousel-spin',
-                  animationDuration: '20s',
+                  animationName: isMobileCarousel ? 'none' : 'solutions-carousel-spin',
+                  animationDuration: '30s',
                   animationTimingFunction: 'linear',
                   animationIterationCount: 'infinite',
-                  animationPlayState: isCarouselPaused
+                  animationPlayState: isMobileCarousel || isCarouselPaused
                     ? 'paused'
                     : 'running'
                 }}
               >
 
+                <AnimatePresence mode="wait" custom={mobileSwipeDirection} initial={false}>
                 {DIVISIONS.map((item, i) => {
 
                   const cardContent = (
@@ -660,6 +699,7 @@ export default function Home() {
                             {item.label}
                           </span>
 
+                          {item.to !== '/ito-ads' && (
                           <ul className="space-y-0.5 sm:space-y-1">
 
                             {item.points.map((point, idx) => (
@@ -695,6 +735,7 @@ export default function Home() {
                             ))}
 
                           </ul>
+                          )}
 
                           <span
                             className="
@@ -719,32 +760,59 @@ export default function Home() {
                     </>
                   );
 
+                  if (isMobileCarousel) {
+                    if (i !== mobileDivisionIndex) return null;
+
+                    return (
+                      <motion.div
+                        key={item.to}
+                        className="absolute inset-0"
+                        custom={mobileSwipeDirection}
+                        initial={(direction) => ({
+                          opacity: 0,
+                          x: direction * 65,
+                          rotateY: direction * 60,
+                          scale: 0.88
+                        })}
+                        animate={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
+                        exit={(direction) => ({
+                          opacity: 0,
+                          x: direction * -65,
+                          rotateY: direction * -60,
+                          scale: 0.88
+                        })}
+                        transition={{ duration: 0.35, ease: 'easeInOut' }}
+                        style={{ transformStyle: 'preserve-3d' }}
+                      >
+                        <Link
+                          to={item.to}
+                          onClick={(event) => {
+                            // A touch swipe should never accidentally open a product page.
+                            if (Date.now() - mobileLastSwipeAt.current < 450) {
+                              event.preventDefault();
+                              return;
+                            }
+                            setIsSolutionsOpen(false);
+                          }}
+                          className="group absolute inset-0 overflow-hidden rounded-[2px] border border-[#C5CBD3]/30 shadow-2xl"
+                          style={{ backfaceVisibility: 'hidden' }}
+                        >
+                          {cardContent}
+                        </Link>
+                      </motion.div>
+                    );
+                  }
+
                   return (
 
                     <div
                       key={item.to}
                       className="absolute inset-0"
                       style={{
-                        transform: `rotateY(${i * 60}deg) translateZ(${isMobileCarousel ? 190 : 260}px)`,
+                        transform: `rotateY(${i * 60}deg) translateZ(280px)`,
                         transformStyle: 'preserve-3d'
                       }}
                     >
-
-                      <div
-                        className="
-                          group
-                          absolute
-                          inset-0
-                          overflow-hidden
-                          rounded-[2px]
-                          border
-                          border-[#C5CBD3]/20
-                          shadow-2xl
-                          pointer-events-none
-                        "
-                      >
-                        {cardContent}
-                      </div>
 
                       <Link
                         to={item.to}
@@ -782,8 +850,19 @@ export default function Home() {
                   );
 
                 })}
+                </AnimatePresence>
 
               </div>
+
+              {isMobileCarousel && (
+                <div
+                  className="absolute top-full left-1/2 mt-6 -translate-x-1/2 flex items-center justify-center gap-2 whitespace-nowrap text-[10px] font-semibold tracking-[0.22em] text-[#C5CBD3] select-none pointer-events-none"
+                  aria-hidden="true"
+                >
+                  <span className="text-base font-normal" aria-hidden="true">↔</span>
+                  SCROLL TO ROTATE
+                </div>
+              )}
 
             </motion.div>
 
