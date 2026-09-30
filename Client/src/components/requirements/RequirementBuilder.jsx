@@ -10,7 +10,6 @@ const STEP_CONFIG = {
     { key: 'material', label: 'Material Grade', icon: FiPackage, event: 'select_product' },
     { key: 'quantity', label: 'Quantity Required', icon: FiTruck, event: 'select_quantity' },
     { key: 'destination', label: 'Discharge Port / City & PIN', icon: FiMapPin, event: 'enter_destination' },
-    { key: 'budget', label: 'Estimated Budget / Valuation', icon: FiDollarSign, event: 'select_budget' },
     { key: 'timeline', label: 'Requirement Date / Lead Urgency', icon: FiCalendar, event: 'select_timeline' },
   ],
   RICE: [
@@ -19,7 +18,7 @@ const STEP_CONFIG = {
     { key: 'packaging', label: 'Packaging', icon: FiPackage, event: 'select_packaging' },
     { key: 'tradeType', label: 'Domestic / Export', icon: FiGlobe, event: 'select_trade_type' },
     { key: 'destination', label: 'Discharge Port / City & PIN', icon: FiMapPin, event: 'enter_destination' },
-    { key: 'budget', label: 'Estimated Budget / Valuation', icon: FiDollarSign, event: 'select_budget' },
+    // { key: 'budget', label: 'Estimated Budget / Valuation', icon: FiDollarSign, event: 'select_budget' },
     { key: 'timeline', label: 'Requirement Date / Lead Urgency', icon: FiCalendar, event: 'select_timeline' },
   ],
   TEA: [
@@ -29,7 +28,7 @@ const STEP_CONFIG = {
     { key: 'tradeType', label: 'Domestic / Export', icon: FiGlobe, event: 'select_trade_type' },
     { key: 'privateLabel', label: 'Private Label', icon: FiTag, event: 'select_private_label' },
     { key: 'destination', label: 'Discharge Port / City & PIN', icon: FiMapPin, event: 'enter_destination' },
-    { key: 'budget', label: 'Estimated Budget / Valuation', icon: FiDollarSign, event: 'select_budget' },
+    // { key: 'budget', label: 'Estimated Budget / Valuation', icon: FiDollarSign, event: 'select_budget' },
     { key: 'timeline', label: 'Requirement Date / Lead Urgency', icon: FiCalendar, event: 'select_timeline' },
   ],
 };
@@ -47,6 +46,70 @@ const DISCHARGE_PORTS = [
   'Custom Discharge Port / City'
 ];
 
+/*
+ * HARD-CODED LOCATION -> PIN MAPPING
+ * -----------------------------------
+ * No Google Geocoding API, external request, API key, or backend change is
+ * required. When a known location is selected/typed, its PIN is populated
+ * locally from this map.
+ *
+ * If the business later adds another location, add it here once.
+ */
+const LOCATION_PIN_MAP = {
+  'Kolkata Port (WB)': '700001',
+  'Haldia Port (WB)': '721607',
+  'Siliguri Inland Depot': '734001',
+  'Patna Inland Freight Terminal': '800001',
+  'Kishanganj Hub': '855107',
+  'Visakhapatnam (Vizag) Port': '530001',
+  'Nhava Sheva (JNPT) Port': '400707',
+  'Chennai Port': '600001',
+  'Mundra Port (Gujarat)': '370421',
+
+  // Common city/port aliases. These are also handled if entered manually.
+  'Kolkata': '700001',
+  'Haldia': '721607',
+  'Siliguri': '734001',
+  'Patna': '800001',
+  'Kishanganj': '855107',
+  'Visakhapatnam': '530001',
+  'Vizag': '530001',
+  'Navi Mumbai': '400707',
+  'Nhava Sheva': '400707',
+  'JNPT': '400707',
+  'Chennai': '600001',
+  'Mundra': '370421'
+};
+
+const normalizeLocationKey = (location = '') =>
+  location
+    .trim()
+    .toLowerCase()
+    .replace(/[()\-/,]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+const NORMALIZED_LOCATION_PIN_MAP = Object.entries(LOCATION_PIN_MAP).reduce((acc, [location, pin]) => {
+  acc[normalizeLocationKey(location)] = pin;
+  return acc;
+}, {});
+
+const getHardcodedPinForLocation = (location = '') => {
+  const normalized = normalizeLocationKey(location);
+  if (!normalized) return '';
+
+  // Exact normalized match first.
+  if (NORMALIZED_LOCATION_PIN_MAP[normalized]) {
+    return NORMALIZED_LOCATION_PIN_MAP[normalized];
+  }
+
+  // Then support a known location appearing inside a longer custom entry.
+  const matchingEntry = Object.entries(NORMALIZED_LOCATION_PIN_MAP).find(([key]) =>
+    normalized.includes(key) || key.includes(normalized)
+  );
+
+  return matchingEntry?.[1] || '';
+};
+
 export function RequirementBuilder({ division, config, onComplete, onStepChange }) {
   const normalizedDivision = (division || 'STONE').toUpperCase();
   const steps = STEP_CONFIG[normalizedDivision] || STEP_CONFIG.STONE;
@@ -55,6 +118,7 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSoftGate, setShowSoftGate] = useState(false);
   const [customPort, setCustomPort] = useState('');
+  const [isCustomLocationMode, setIsCustomLocationMode] = useState(false);
   const [customBudget, setCustomBudget] = useState('');
   const [customDate, setCustomDate] = useState('');
 
@@ -193,12 +257,34 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
     const selectedMaterial = requirement.material || requirement.variety || requirement.teaType || '';
     const isPinIncomplete = currentPin.length > 0 && currentPin.length < 6;
 
-    const locationOptions = Array.from(new Set([...destData.map(d => d.location).filter(Boolean), ...DISCHARGE_PORTS]));
+    const locationOptions = Array.from(new Set([
+      ...destData.map(d => d.location).filter(Boolean),
+      ...DISCHARGE_PORTS
+    ]));
+
     const selectedLocData = destData.find(d => d.location === currentLoc);
     let priceInfo = null;
     if (selectedLocData && selectedMaterial) {
       priceInfo = selectedLocData.rates?.[selectedMaterial];
     }
+
+    const applyLocationAndPin = (location) => {
+      const nextPin = getHardcodedPinForLocation(location);
+      const nextDestination = {
+        ...(requirement.destination || {}),
+        location,
+        pin: nextPin
+      };
+
+      // Keep the existing requirement keys so the existing submission/backend
+      // handoff receives the same shape as before.
+      handleOptionSelect('destination', nextDestination, {
+        location,
+        pin: nextPin
+      });
+      handleOptionSelect('dischargePort', location);
+      handleOptionSelect('pin', nextPin);
+    };
 
     return (
       <div className="space-y-4 max-w-2xl mx-auto">
@@ -206,56 +292,69 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
             Discharge Port / Delivery City *
           </label>
+
           <select
-            value={DISCHARGE_PORTS.includes(currentLoc) ? currentLoc : (currentLoc ? 'Custom Discharge Port / City' : '')}
+            value={locationOptions.includes(currentLoc) ? currentLoc : (currentLoc ? 'Custom Discharge Port / City' : '')}
             onChange={(e) => {
               const val = e.target.value;
+
               if (val === 'Custom Discharge Port / City') {
+                setIsCustomLocationMode(true);
                 setCustomPort('');
-                handleOptionSelect('destination', { ...requirement.destination, location: customPort }, { location: customPort });
-                handleOptionSelect('dischargePort', customPort);
-              } else {
-                handleOptionSelect('destination', { ...requirement.destination, location: val }, { location: val });
-                handleOptionSelect('dischargePort', val);
+                applyLocationAndPin('');
+                return;
               }
+
+              setIsCustomLocationMode(false);
+              setCustomPort('');
+              applyLocationAndPin(val);
             }}
             className="w-full px-4 py-3.5 rounded-lg border border-gray-300 bg-white text-black font-medium text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
           >
             <option value="">Select Discharge Port / City</option>
-            {locationOptions.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+            {locationOptions.map((loc, idx) => (
+              <option key={idx} value={loc}>{loc}</option>
+            ))}
           </select>
 
-          {(!DISCHARGE_PORTS.includes(currentLoc) || currentLoc === 'Custom Discharge Port / City') && (
+          {(isCustomLocationMode || (!locationOptions.includes(currentLoc) && currentLoc !== '')) && (
             <input
               type="text"
-              placeholder="Enter Custom Discharge Port or City Name *"
-              value={customPort || (DISCHARGE_PORTS.includes(currentLoc) ? '' : currentLoc)}
+              placeholder="Enter Discharge Port or City Name *"
+              value={customPort || (isCustomLocationMode ? '' : currentLoc)}
               onChange={(e) => {
                 const val = e.target.value;
                 setCustomPort(val);
-                handleOptionSelect('destination', { ...requirement.destination, location: val }, { location: val });
-                handleOptionSelect('dischargePort', val);
+                applyLocationAndPin(val);
               }}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
             />
+          )}
+
+          {currentLoc && !getHardcodedPinForLocation(currentLoc) && (
+            <div className="flex items-start gap-2 text-xs text-amber-600 font-medium">
+              <FiAlertCircle size={14} className="mt-0.5 shrink-0" />
+              <span>
+                No hardcoded PIN is available for this location yet. Add the location and its PIN to
+                <code className="mx-1">LOCATION_PIN_MAP</code> to enable automatic population.
+              </span>
+            </div>
           )}
         </div>
 
         <div className="space-y-2">
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-            Destination PIN Code (Minimum 6 Digits Required) *
+            Destination PIN Code (Automatically Populated) *
           </label>
+
           <input
             type="text"
-            placeholder="Enter 6-digit PIN Code (e.g., 700001) *"
+            placeholder="Select/enter a mapped location to populate PIN"
             value={currentPin}
-            onChange={(e) => {
-              const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
-              handleOptionSelect('destination', { ...requirement.destination, pin }, { pin });
-              handleOptionSelect('pin', pin);
-            }}
+            readOnly
+            aria-readonly="true"
             maxLength={6}
-            className={`w-full px-4 py-3.5 rounded-lg border font-mono text-base transition-colors ${
+            className={`w-full px-4 py-3.5 rounded-lg border font-mono text-base transition-colors cursor-not-allowed ${
               isPinIncomplete || (currentPin.length === 0 && currentLoc.length > 0)
                 ? 'border-red-500 bg-red-50 text-red-900 focus:ring-2 focus:ring-red-400'
                 : isPinValid
@@ -267,14 +366,16 @@ export function RequirementBuilder({ division, config, onComplete, onStepChange 
           {(!isPinValid) && (
             <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
               <FiAlertCircle size={14} />
-              <span>PIN Code must be minimum 6 digits (currently {currentPin.length}/6 digits).</span>
+              <span>
+                PIN Code could not be populated automatically for this location.
+              </span>
             </div>
           )}
 
           {isPinValid && (
             <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
               <FiCheckCircle size={14} />
-              <span>6-Digit PIN Code Verified for Logistics Audit</span>
+              <span>6-Digit PIN Code Automatically Verified for Logistics Audit</span>
             </div>
           )}
         </div>
