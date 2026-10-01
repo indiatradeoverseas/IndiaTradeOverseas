@@ -98,8 +98,8 @@ export default function Sidebar({ onClose }) {
         borderColor: 'var(--crm-line)'
       }}
     >
-      {/* Sidebar Top Header matching Image 2 */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b" style={{ borderColor: 'var(--crm-line)' }}>
+      {/* Sidebar Top Header (Visible on mobile drawer only, hidden on desktop to avoid duplicate logo) */}
+      <div className="flex md:hidden items-center justify-between px-4 pt-4 pb-3 border-b" style={{ borderColor: 'var(--crm-line)' }}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <ItcLogo showText={true} stackedText={true} size="md" />
         </div>
