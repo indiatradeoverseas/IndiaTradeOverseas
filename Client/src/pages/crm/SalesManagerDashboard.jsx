@@ -1337,7 +1337,7 @@ export default function SalesManagerDashboard() {
     >
       {/* Breadcrumb Trail */}
       <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]">
-        <span>INDIA TRADE CENTRE</span>
+        <span>INDIA TRADE CENTER</span>
         <span>&raquo;&raquo;</span>
         <span className="text-[#2563eb] font-extrabold">SALES</span>
       </div>

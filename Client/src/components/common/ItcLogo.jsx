@@ -78,34 +78,63 @@ export function ItcLogoBadge({ size = 'md', className = '' }) {
 
 export default function ItcLogo({
   showText = true,
+  stackedText = false,
   size = 'md',
   className = '',
 }) {
+  const isSm = size === 'sm' || size === 'xs';
+  const titleTextSize = isSm ? 'text-[11px] sm:text-[12px]' : 'text-[12.5px] sm:text-[14px]';
+  const subTextSize = isSm ? 'text-[7.5px] sm:text-[8px]' : 'text-[8.5px] sm:text-[9.5px]';
+
   return (
-    <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
+    <div className={`inline-flex items-center gap-2.5 select-none min-w-0 ${className}`}>
       <ItcLogoBadge size={size} />
 
       {showText && (
-        <div className="flex flex-col leading-none text-left justify-center">
-          <span
-            className="font-serif uppercase tracking-[0.04em] text-[14px] sm:text-[16px] itc-brand-title"
-            style={{
-              fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
-              fontWeight: 900
-            }}
-          >
-            INDIA TRADE CENTER
-          </span>
-
-          <span
-            className="mt-0.5 font-serif text-[9px] sm:text-[10.5px] tracking-normal itc-brand-subtitle"
-            style={{
-              fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
-              fontWeight: 600
-            }}
-          >
-            Global Trade Made Simple
-          </span>
+        <div className="flex flex-col text-left justify-center min-w-0">
+          {stackedText ? (
+            <>
+              <span
+                className={`font-serif uppercase tracking-[0.03em] leading-[1.08] itc-brand-title ${titleTextSize}`}
+                style={{
+                  fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
+                  fontWeight: 900
+                }}
+              >
+                INDIA TRADE<br />CENTER
+              </span>
+              <span
+                className={`mt-1 font-serif tracking-normal leading-tight itc-brand-subtitle ${subTextSize}`}
+                style={{
+                  fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
+                  fontWeight: 600
+                }}
+              >
+                Global Trade Made Simple
+              </span>
+            </>
+          ) : (
+            <>
+              <span
+                className={`font-serif uppercase tracking-[0.03em] whitespace-nowrap truncate itc-brand-title ${titleTextSize}`}
+                style={{
+                  fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
+                  fontWeight: 900
+                }}
+              >
+                INDIA TRADE CENTER
+              </span>
+              <span
+                className={`mt-0.5 font-serif tracking-normal whitespace-nowrap truncate itc-brand-subtitle ${subTextSize}`}
+                style={{
+                  fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif",
+                  fontWeight: 600
+                }}
+              >
+                Global Trade Made Simple
+              </span>
+            </>
+          )}
         </div>
       )}
     </div>
