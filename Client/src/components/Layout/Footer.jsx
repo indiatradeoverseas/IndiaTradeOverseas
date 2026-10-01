@@ -86,6 +86,15 @@ export default function Footer() {
       accentText: '#DCCCB4',
       subtleAccent: '#A89E8E'
     };
+  } else if (currentPath === '/nashik-onion') {
+    theme = {
+      bg: 'bg-[#4A101C]',
+      text: 'text-[#F7F3EA]',
+      border: 'border-[#8E3347]/30',
+      doubleBorder: '#B5965A',
+      accentText: '#F7F3EA',
+      subtleAccent: '#B5965A'
+    };
   }
 
   const officialEmail = 'info@indiatradeoverseas.com';

@@ -1,26 +1,138 @@
-// Razorpay's checkout.js used to be loaded unconditionally in index.html on
-// every single page (including marketing pages with no payment flow at
-// all). It's only ever needed on Stone/Rice/Prakriti's order checkout, so
-// it's loaded on demand instead, right before a payment is opened.
+// Razorpay Checkout is loaded only when a payment flow needs it.
+// This avoids loading checkout.js on normal marketing/public pages.
+
 let loadPromise = null;
 
-export function loadRazorpayScript() {
-  if (typeof window !== 'undefined' && window.Razorpay) {
-    return Promise.resolve();
-  }
-  if (loadPromise) return loadPromise;
+const RAZORPAY_SCRIPT_URL =
+  "https://checkout.razorpay.com/v1/checkout.js";
 
-  loadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      loadPromise = null;
-      reject(new Error('Failed to load Razorpay checkout script.'));
-    };
-    document.body.appendChild(script);
-  });
+export function loadRazorpayScript() {
+  if (
+    typeof window === "undefined" ||
+    typeof document === "undefined"
+  ) {
+    return Promise.resolve(false);
+  }
+
+  if (window.Razorpay) {
+    return Promise.resolve(true);
+  }
+
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  loadPromise = new Promise(
+    (resolve, reject) => {
+      const existingScript =
+        document.querySelector(
+          `script[src="${RAZORPAY_SCRIPT_URL}"]`
+        );
+
+      if (existingScript) {
+        if (window.Razorpay) {
+          resolve(true);
+          return;
+        }
+
+        const cleanup = () => {
+          existingScript.removeEventListener(
+            "load",
+            handleLoad
+          );
+
+          existingScript.removeEventListener(
+            "error",
+            handleError
+          );
+        };
+
+        const handleLoad = () => {
+          cleanup();
+
+          if (window.Razorpay) {
+            resolve(true);
+          } else {
+            loadPromise = null;
+
+            reject(
+              new Error(
+                "Razorpay checkout script loaded but Razorpay was not initialised."
+              )
+            );
+          }
+        };
+
+        const handleError = () => {
+          cleanup();
+
+          loadPromise = null;
+
+          reject(
+            new Error(
+              "Failed to load Razorpay checkout script."
+            )
+          );
+        };
+
+        existingScript.addEventListener(
+          "load",
+          handleLoad,
+          {
+            once: true,
+          }
+        );
+
+        existingScript.addEventListener(
+          "error",
+          handleError,
+          {
+            once: true,
+          }
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+      script.src =
+        RAZORPAY_SCRIPT_URL;
+
+      script.async = true;
+
+      script.onload = () => {
+        if (window.Razorpay) {
+          resolve(true);
+        } else {
+          loadPromise = null;
+
+          reject(
+            new Error(
+              "Razorpay checkout script loaded but Razorpay was not initialised."
+            )
+          );
+        }
+      };
+
+      script.onerror = () => {
+        loadPromise = null;
+
+        reject(
+          new Error(
+            "Failed to load Razorpay checkout script."
+          )
+        );
+      };
+
+      document.body.appendChild(
+        script
+      );
+    }
+  );
 
   return loadPromise;
 }

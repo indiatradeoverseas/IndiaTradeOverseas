@@ -3,67 +3,168 @@ import { useLayoutEffect } from 'react';
 const SITE_URL = 'https://www.indiatradeoverseas.com';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/web_icon_1.jpeg`;
 
-function upsertMetaByAttr(attr, value, content) {
-  if (!content) return;
+const DEFAULT_ROBOTS =
+  'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 
-  let el = document.head.querySelector(
+/* =========================================================
+   META HELPERS
+========================================================= */
+
+function upsertMetaByAttr(attr, value, content) {
+  if (!attr || !value || !content) {
+    return;
+  }
+
+  let element = document.head.querySelector(
     `meta[${attr}="${value}"]`
   );
 
-  if (!el) {
-    el = document.createElement('meta');
-    el.setAttribute(attr, value);
-    document.head.appendChild(el);
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute(attr, value);
+    document.head.appendChild(element);
   }
 
-  el.setAttribute('content', content);
+  element.setAttribute('content', content);
 }
 
 function upsertCanonicalLink(href) {
-  if (!href) return;
+  if (!href) {
+    return;
+  }
 
-  let el = document.head.querySelector(
+  let element = document.head.querySelector(
     'link[rel="canonical"]'
   );
 
-  if (!el) {
-    el = document.createElement('link');
-    el.setAttribute('rel', 'canonical');
-    document.head.appendChild(el);
+  if (!element) {
+    element = document.createElement('link');
+    element.setAttribute('rel', 'canonical');
+    document.head.appendChild(element);
   }
 
-  el.setAttribute('href', href);
+  element.setAttribute('href', href);
+}
+
+/* =========================================================
+   URL HELPERS
+========================================================= */
+
+function normalizePath(path) {
+  if (!path || path === '/') {
+    return '/';
+  }
+
+  const cleanPath = path
+    .split('?')[0]
+    .split('#')[0];
+
+  const withLeadingSlash =
+    cleanPath.startsWith('/')
+      ? cleanPath
+      : `/${cleanPath}`;
+
+  /*
+   * Canonical convention:
+   *
+   * Homepage:
+   * https://www.indiatradeoverseas.com/
+   *
+   * Internal pages:
+   * https://www.indiatradeoverseas.com/coal
+   *
+   * No trailing slash on internal pages.
+   */
+  return withLeadingSlash.replace(/\/+$/, '');
 }
 
 function buildCanonicalUrl(canonicalPath) {
-  if (!canonicalPath) return null;
+  /*
+   * If the page does not explicitly provide canonicalPath,
+   * use the current route rather than leaving a stale canonical
+   * from the previous SPA page.
+   */
+  const target =
+    canonicalPath ||
+    window.location.pathname ||
+    '/';
 
-  // Allow an already-qualified canonical URL.
-  if (/^https?:\/\//i.test(canonicalPath)) {
-    return canonicalPath;
+  if (/^https?:\/\//i.test(target)) {
+    try {
+      const url = new URL(target);
+
+      url.search = '';
+      url.hash = '';
+
+      if (url.pathname !== '/') {
+        url.pathname =
+          url.pathname.replace(/\/+$/, '');
+      }
+
+      return url.toString();
+    } catch {
+      return `${SITE_URL}/`;
+    }
   }
 
-  const normalizedPath = canonicalPath.startsWith('/')
-    ? canonicalPath
-    : `/${canonicalPath}`;
+  const normalizedPath =
+    normalizePath(target);
 
-  return `${SITE_URL}${normalizedPath}`;
+  return normalizedPath === '/'
+    ? `${SITE_URL}/`
+    : `${SITE_URL}${normalizedPath}`;
 }
 
+function buildAbsoluteAssetUrl(assetUrl) {
+  if (!assetUrl) {
+    return DEFAULT_OG_IMAGE;
+  }
+
+  if (
+    /^https?:\/\//i.test(assetUrl)
+  ) {
+    return assetUrl;
+  }
+
+  const normalizedAssetPath =
+    assetUrl.startsWith('/')
+      ? assetUrl
+      : `/${assetUrl}`;
+
+  return `${SITE_URL}${normalizedAssetPath}`;
+}
+
+/* =========================================================
+   DOCUMENT META HOOK
+========================================================= */
+
 /**
- * Updates page-level SEO and social metadata.
+ * India Trade Overseas — page-level SEO metadata.
  *
  * Handles:
- * - document.title
+ * - document title
  * - meta description
  * - canonical URL
- * - Open Graph metadata
- * - Twitter/X metadata
- * - robots directive
+ * - Open Graph
+ * - Twitter / X
+ * - robots directives
  *
- * useLayoutEffect is intentional so metadata is committed
- * before AppLayout's virtual_page_view tracking reads
- * document.title after route changes.
+ * Public indexed page example:
+ *
+ * useDocumentMeta({
+ *   title: 'Coal Supplier in India | India Trade Overseas',
+ *   description: '...',
+ *   canonicalPath: '/coal'
+ * });
+ *
+ * Private / transactional page example:
+ *
+ * useDocumentMeta({
+ *   title: 'Coal Pricing | India Trade Overseas',
+ *   description: '...',
+ *   canonicalPath: '/coal/pricing',
+ *   robots: 'noindex, nofollow'
+ * });
  */
 export default function useDocumentMeta({
   title,
@@ -71,24 +172,20 @@ export default function useDocumentMeta({
   canonicalPath,
   ogImage,
   ogType = 'website',
-  robots = 'index, follow'
+  robots = DEFAULT_ROBOTS
 }) {
   useLayoutEffect(() => {
-    /*
-     * =========================================================
-     * TITLE
-     * =========================================================
-     */
+    /* =====================================================
+       TITLE
+    ===================================================== */
 
     if (title) {
       document.title = title;
     }
 
-    /*
-     * =========================================================
-     * DESCRIPTION
-     * =========================================================
-     */
+    /* =====================================================
+       DESCRIPTION
+    ===================================================== */
 
     if (description) {
       upsertMetaByAttr(
@@ -110,11 +207,9 @@ export default function useDocumentMeta({
       );
     }
 
-    /*
-     * =========================================================
-     * OPEN GRAPH TITLE
-     * =========================================================
-     */
+    /* =====================================================
+       TITLE — SOCIAL
+    ===================================================== */
 
     if (title) {
       upsertMetaByAttr(
@@ -130,11 +225,9 @@ export default function useDocumentMeta({
       );
     }
 
-    /*
-     * =========================================================
-     * OPEN GRAPH TYPE
-     * =========================================================
-     */
+    /* =====================================================
+       OPEN GRAPH
+    ===================================================== */
 
     upsertMetaByAttr(
       'property',
@@ -142,56 +235,63 @@ export default function useDocumentMeta({
       ogType
     );
 
-    /*
-     * =========================================================
-     * SOCIAL IMAGE
-     * =========================================================
-     */
+    upsertMetaByAttr(
+      'property',
+      'og:site_name',
+      'India Trade Overseas'
+    );
 
-    const image = ogImage || DEFAULT_OG_IMAGE;
+    upsertMetaByAttr(
+      'property',
+      'og:locale',
+      'en_IN'
+    );
+
+    /* =====================================================
+       SOCIAL IMAGE
+    ===================================================== */
+
+    const socialImage =
+      buildAbsoluteAssetUrl(ogImage);
 
     upsertMetaByAttr(
       'property',
       'og:image',
-      image
+      socialImage
     );
 
     upsertMetaByAttr(
       'name',
       'twitter:image',
-      image
+      socialImage
     );
 
-    /*
-     * =========================================================
-     * CANONICAL + OG URL + TWITTER URL
-     * =========================================================
-     */
+    /* =====================================================
+       CANONICAL URL
+    ===================================================== */
 
     const canonicalUrl =
       buildCanonicalUrl(canonicalPath);
 
-    if (canonicalUrl) {
-      upsertMetaByAttr(
-        'property',
-        'og:url',
-        canonicalUrl
-      );
+    upsertCanonicalLink(
+      canonicalUrl
+    );
 
-      upsertMetaByAttr(
-        'name',
-        'twitter:url',
-        canonicalUrl
-      );
+    upsertMetaByAttr(
+      'property',
+      'og:url',
+      canonicalUrl
+    );
 
-      upsertCanonicalLink(canonicalUrl);
-    }
+    upsertMetaByAttr(
+      'name',
+      'twitter:url',
+      canonicalUrl
+    );
 
-    /*
-     * =========================================================
-     * TWITTER / X CARD
-     * =========================================================
-     */
+    /* =====================================================
+       TWITTER / X
+    ===================================================== */
 
     upsertMetaByAttr(
       'name',
@@ -199,25 +299,27 @@ export default function useDocumentMeta({
       'summary_large_image'
     );
 
-    /*
-     * =========================================================
-     * ROBOTS
-     * =========================================================
-     *
-     * Default:
-     * index, follow
-     *
-     * For pages that should not appear in search results,
-     * call the hook with:
-     *
-     * robots: 'noindex, nofollow'
-     * =========================================================
-     */
+    /* =====================================================
+       ROBOTS
+    ===================================================== */
+
+    const robotsDirective =
+      robots || DEFAULT_ROBOTS;
 
     upsertMetaByAttr(
       'name',
       'robots',
-      robots
+      robotsDirective
+    );
+
+    /*
+     * Keep Google-specific crawler directives aligned
+     * with the general robots directive.
+     */
+    upsertMetaByAttr(
+      'name',
+      'googlebot',
+      robotsDirective
     );
   }, [
     title,

@@ -78,6 +78,14 @@ const ALTERNATING_SHOWCASE = [
     specs: ["Size: 20 Nominal", "Color: Black & White Available", "Loading: Phuentsholing / Gomtu", "Usage: RCC Roofing & RMC"]
   },
   {
+    id: "30mm-kamji",
+    title: "30 MM Kamji Stone",
+    subtitle: "High-Strength Concrete & Structural Works",
+    image: "/images/stone_images/30mm-kamji.jpg",
+    description: "Dense, angular Kamji stone aggregate suited for structural concrete, heavy-duty construction and projects requiring a dependable balance of strength, grading and compaction.",
+    specs: ["Size: 30 Nominal", "Material: Kamji Stone", "Origin: Bhutan", "Usage: RCC & Heavy Construction"]
+  },
+  {
     id: "40mm",
     title: "40 MM Stone Chips",
     subtitle: "Heavy Roadways & Site Base Development",
@@ -269,6 +277,107 @@ const BHUTAN_RATES = BHUTAN_RAW.map(([location, state, values]) => ({
   }, {})
 }));
 
+// ============================================================
+// DIRECT REQUIREMENT -> CHECKOUT HELPERS
+// ============================================================
+const STONE_MATERIAL_TO_RATE_KEY = {
+  DUST: 'dust',
+  '10MM_WHITE': 'white10',
+  '20MM_WHITE': 'white20',
+  '30_40_WHITE': 'white3040',
+  '30MM_WHITE': 'white30',
+  '40_60_WHITE': 'white4060',
+  '10MM_BLACK_KAMJI': 'black10',
+  '20MM_BLACK_KAMJI': 'black20',
+  '30MM_BLACK_KAMJI': 'black30',
+  '40_60_BLACK_KAMJI': 'black4060',
+  PAKUR_20MM: '20mm',
+  PAKUR_30MM: '30mm',
+  PAKUR_40MM: '40mm',
+  PAKUR_10MM: '10mm'
+};
+
+const STONE_QUANTITY_DEFAULT_MT = {
+  '1_TRUCK': 30,
+  '2_5_TRUCKS': 50,
+  '6_10_TRUCKS': 150,
+  '10_PLUS_TRUCKS': 300,
+  CUSTOM: 500
+};
+
+function resolveDirectStoneCheckout(requirement) {
+  const materialCode = requirement?.material || '';
+  const location =
+    requirement?.destination?.location ||
+    requirement?.dischargePort ||
+    '';
+
+  if (!materialCode || !location) {
+    throw new Error(
+      'Material or delivery location is missing from the Stone requirement.'
+    );
+  }
+
+  const isPakur = materialCode.startsWith('PAKUR_');
+  const rateKey = STONE_MATERIAL_TO_RATE_KEY[materialCode];
+
+  if (!rateKey) {
+    throw new Error('Selected Stone material is not mapped to an official rate.');
+  }
+
+  const sourceRates = isPakur ? PAKUR_RATES : BHUTAN_RATES;
+
+  const rateEntry = sourceRates.find(
+    (entry) =>
+      String(entry.location).trim().toLowerCase() ===
+      String(location).trim().toLowerCase()
+  );
+
+  if (!rateEntry) {
+    throw new Error(
+      `Official Stone rate is not available for ${location}. Please choose a supported rate-card location.`
+    );
+  }
+
+  const price = isPakur
+    ? rateEntry?.rates?.[rateKey]?.adv100
+    : rateEntry?.rates?.[rateKey];
+
+  if (price == null || !Number.isFinite(Number(price))) {
+    throw new Error(
+      'Official Stone rate is unavailable for the selected material and location.'
+    );
+  }
+
+  const gradeLabel = isPakur
+    ? PAKUR_SIZE_LABELS[rateKey]
+    : BHUTAN_TYPE_LABELS[rateKey];
+
+  const quantityCode = requirement?.quantity || '';
+  const defaultQuantityMt =
+    STONE_QUANTITY_DEFAULT_MT[quantityCode] || 500;
+
+  const lotId = `${isPakur ? 'PAKUR' : 'BHUTAN'}-${String(location)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')}-${String(rateKey).toUpperCase()}`;
+
+  return {
+    lot: {
+      id: lotId,
+      division: isPakur ? 'Pakur Stone' : 'Bhutan Stone',
+      region: rateEntry.state
+        ? `${rateEntry.location}, ${rateEntry.state}`
+        : rateEntry.location,
+      grade: isPakur
+        ? `${gradeLabel} (100% Advance)`
+        : gradeLabel,
+      price: Number(price),
+      paymentTerm: isPakur ? 'ADVANCE_100' : 'STANDARD'
+    },
+    defaultQuantityMt
+  };
+}
+
 export default function Stone() {
   useDocumentMeta({
     title: 'Bhutan & Pakur Stone Chips Supplier | B2B Bulk Sourcing | India Trade Overseas',
@@ -333,27 +442,64 @@ export default function Stone() {
     const effectiveTimeline = targetTimeline || 'Within 7 Days';
     if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim()) {
       toast.dismiss();
-      toast.error('Please fill all required fields.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please fill all required fields.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(email)) {
       toast.dismiss();
-      toast.error('Please enter a valid email address.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please enter a valid email address.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
+
     const cleanMobile = mobile.replace(/[^0-9]/g, '');
+
     if (cleanMobile.length < 10) {
       toast.dismiss();
-      toast.error('Please enter a valid 10-digit mobile number.', { id: 'stone_gate_toast' });
+      toast.error(
+        'Please enter a valid 10-digit mobile number.',
+        { id: 'stone_gate_toast' }
+      );
+      return;
+    }
+
+    if (!builtRequirement) {
+      toast.dismiss();
+      toast.error(
+        'Stone requirement is missing. Please build your requirement again.',
+        { id: 'stone_gate_toast' }
+      );
+      return;
+    }
+
+    let checkout;
+
+    try {
+      checkout = resolveDirectStoneCheckout(builtRequirement);
+    } catch (pricingError) {
+      toast.dismiss();
+      toast.error(
+        pricingError.message ||
+          'Unable to calculate Stone pricing for this requirement.',
+        { id: 'stone_gate_toast' }
+      );
       return;
     }
 
     try {
       setLoadingQuickGate(true);
+
       const formData = new FormData();
-      formData.append('name', fullName);
-      formData.append('email', email);
+      formData.append('name', fullName.trim());
+      formData.append('email', email.trim());
       formData.append('mobile', cleanMobile);
       formData.append('city', city);
       formData.append('state', state);
@@ -362,26 +508,82 @@ export default function Stone() {
       formData.append('registrationSource', 'QUICK_GATE');
 
       const res = await distributorApi.registerDistributor(formData);
-      if (res.success) {
-        const id = res.data?.distributorId || res.data?._id;
-        const token = res.data?.token;
-        setLinkedDistributorId(id || null);
-        if (id) localStorage.setItem('ito_stone_buyer_id', id);
-        if (token) localStorage.setItem('distributor_token', token);
-        setShowPersonalDetails(false);
-        setUserAccessLayer(5);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        toast.dismiss();
-        toast.success('Details saved! Product pricing unlocked.', { id: 'stone_gate_toast' });
+
+      if (!res?.success) {
+        throw new Error(
+          res?.message || 'Failed to save buyer details.'
+        );
       }
-    } catch (err) {
-      console.error('Quick gate registration failed:', err);
+
+      const id =
+        res.data?.distributorId ||
+        res.data?._id;
+
+      const token =
+        res.data?.token ||
+        res.data?.accessToken;
+
+      setLinkedDistributorId(id || null);
+
+      if (id) {
+        setDistributorId(id);
+        localStorage.setItem(
+          'ito_stone_buyer_id',
+          id
+        );
+      }
+
+      if (token) {
+        localStorage.setItem(
+          'distributor_token',
+          token
+        );
+      }
+
+      setShowPersonalDetails(false);
+      setUserAccessLayer(1);
+      localStorage.setItem(
+        ACTIVE_LAYER_KEY,
+        '1'
+      );
+
+      setActiveDrawerLot(
+        checkout.lot
+      );
+
+      setOrderQuantity(
+        String(
+          checkout.defaultQuantityMt
+        )
+      );
+
+      setPaymentMode('ONLINE');
+      setIsOrderDrawerOpen(true);
+
       toast.dismiss();
-      toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'stone_gate_toast' });
+      toast.success(
+        'Details saved! Total payable calculated with 5% GST.',
+        { id: 'stone_gate_toast' }
+      );
+    } catch (err) {
+      console.error(
+        'Quick gate registration failed:',
+        err
+      );
+
+      toast.dismiss();
+
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          'Failed to save details. Please try again.',
+        { id: 'stone_gate_toast' }
+      );
     } finally {
       setLoadingQuickGate(false);
     }
   };
+
   const [showSoftGate, setShowSoftGate] = useState(false);
   const [softGateLeadId, setSoftGateLeadId] = useState(null);
   const [linkedDistributorId, setLinkedDistributorId] = useState(null);
@@ -488,12 +690,8 @@ export default function Stone() {
             const status = res.data.approvalStatus;
 
             if (status === 'approved') {
-              const savedLayer =
-                localStorage.getItem(ACTIVE_LAYER_KEY);
-
-              setUserAccessLayer(
-                savedLayer === '5' ? 5 : 1
-              );
+              setUserAccessLayer(1);
+              localStorage.setItem(ACTIVE_LAYER_KEY, '1');
             } else if (status === 'pending') {
               setUserAccessLayer(4);
             } else {
@@ -672,22 +870,12 @@ export default function Stone() {
       source_page: '/stone'
     });
 
-    const savedId =
-      localStorage.getItem(
-        'ito_stone_buyer_id'
-      );
+    setShowRequirementBuilder(true);
 
-    const token =
-      localStorage.getItem(
-        'distributor_token'
-      );
-
-    if (!savedId || !token) {
-      setShowRequirementBuilder(true);
-      pushDataLayerEvent('view_product', { division: 'STONE' });
-    } else {
-      setUserAccessLayer(5);
-    }
+    pushDataLayerEvent(
+      'view_product',
+      { division: 'STONE' }
+    );
   };
 
 
@@ -2005,7 +2193,7 @@ export default function Stone() {
                             : 'lg:order-2'
                         }`}
                       >
-                        <div className="relative rounded-xl overflow-hidden shadow-md border border-[#DCCCB4] group h-64 sm:h-80 bg-[#A89E8E]/20">
+                        <div className="relative rounded-xl overflow-hidden shadow-md border border-[#DCCCB4] group h-64 sm:h-80 bg-[#A89E8E]/20 flex items-center justify-center">
                           <img
                             src={
                               item.image
@@ -2013,7 +2201,7 @@ export default function Stone() {
                             alt={
                               item.title
                             }
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500"
                           />
                         </div>
                       </div>
@@ -2292,7 +2480,7 @@ export default function Stone() {
                 }
               />
 
-              <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+              <div className="fixed inset-0 flex items-end sm:items-stretch sm:justify-end">
                 <motion.div
                   initial={{
                     x: '100%'
@@ -2303,9 +2491,9 @@ export default function Stone() {
                   exit={{
                     x: '100%'
                   }}
-                  className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
+                  className="w-full sm:w-screen sm:max-w-md max-h-[94dvh] sm:max-h-none sm:h-full bg-white shadow-2xl flex flex-col justify-between rounded-t-2xl sm:rounded-none overflow-hidden"
                 >
-                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1">
+                  <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-left flex-1 min-h-0">
                     <div className="flex items-center justify-between border-b pb-3.5">
                       <h2 className="text-base sm:text-xl font-serif text-[#37424B] uppercase">
                         Quotation Enquiry
@@ -2355,7 +2543,7 @@ export default function Stone() {
 
                       <input
                         type="number"
-                        min="40"
+                        min="1"
                         value={orderQuantity}
                         onChange={(e) =>
                           setOrderQuantity(
@@ -2366,18 +2554,18 @@ export default function Stone() {
                       />
 
                       <span className="text-[9px] text-slate-400 block">
-                        Minimum truckload allocation constraint: 40 MT.
+                        Quantity is prefilled from your requirement band. Confirm the exact MT before payment.
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0">
+                  <div className="p-4 sm:p-6 bg-[#F4F2EE] border-t border-[#DCCCB4] space-y-3 shrink-0 max-h-[48dvh] sm:max-h-none overflow-y-auto sm:overflow-visible">
                     {/* Payment Mode Selector */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Select Payment Method:
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
+  Payment Method
+</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setPaymentMode('ONLINE')}
@@ -2387,9 +2575,9 @@ export default function Stone() {
                               : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           }`}
                         >
-                          <span>💳</span> Online Payment
+                          <span>💳</span> Secure Online Payment
                         </button>
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() => setPaymentMode('COD')}
                           className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
@@ -2399,7 +2587,7 @@ export default function Stone() {
                           }`}
                         >
                           <span>📦</span> Cash on Delivery
-                        </button>
+                        </button> */}
                       </div>
                     </div>
 
@@ -2410,15 +2598,15 @@ export default function Stone() {
 
                       return (
                         <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
-                          <div className="flex items-center justify-between text-slate-600">
+                          <div className="flex items-start justify-between gap-3 text-slate-600">
                             <span>Base Subtotal:</span>
                             <span>INR {subtotal.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-blue-700 font-bold">
+                          <div className="flex items-start justify-between gap-3 text-blue-700 font-bold">
                             <span>GST (5%):</span>
                             <span>INR {gstAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                          <div className="flex items-start justify-between gap-3 text-[#37424B] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
                             <span className="uppercase">Total Payable:</span>
                             <span>INR {totalAmount.toLocaleString()}</span>
                           </div>
@@ -2428,8 +2616,8 @@ export default function Stone() {
 
                     <OrderButton
                       action={async () => {
-                        if (!orderQuantity || Number(orderQuantity) < 40) {
-                          toast.error("Minimum constraint is 40 MT.");
+                        if (!orderQuantity || Number(orderQuantity) <= 0) {
+                          toast.error("Please enter a valid quantity in MT.");
                           throw new Error('validation');
                         }
 
@@ -2499,47 +2687,143 @@ export default function Stone() {
                           return;
                         }
 
-                        // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
+                        // 3. IF ONLINE PAYMENT:
+                        // Open Razorpay, verify the transaction on the backend,
+                        // and generate the invoice only after verification succeeds.
                         try {
+                          await loadRazorpayScript();
+
+                          if (!window.Razorpay) {
+                            throw new Error(
+                              'Razorpay checkout could not be loaded.'
+                            );
+                          }
+
                           const orderResult = await distributorApi.createRazorpayOrder({
                             amount: totalAmount,
                             lotId: activeDrawerLot.id,
                             quantity: Number(orderQuantity)
                           });
 
+                          if (!orderResult?.success) {
+                            throw new Error(
+                              orderResult?.message ||
+                                'Failed to initialize Razorpay.'
+                            );
+                          }
+
                           const { orderId, keyId } = orderResult?.data || {};
 
-                          if (!orderId || !window.Razorpay) {
-                            triggerSuccessPDF('', 'ONLINE');
-                            return;
+                          if (!orderId || !keyId) {
+                            throw new Error(
+                              'Payment gateway returned an invalid order response.'
+                            );
                           }
 
                           const options = {
-                            key: keyId || 'rzp_test_demo',
+                            key: keyId,
                             amount: totalAmount * 100,
                             currency: 'INR',
                             name: 'India Trade Overseas',
                             description: `Stone Sourcing Payment (${activeDrawerLot.grade})`,
                             order_id: orderId,
-                            handler: function (response) {
-                              triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
-                            },
-                            modal: {
-                              ondismiss: function () {
-                                toast.error('Payment cancelled. PDF invoice was not generated.');
+
+                            handler: async function (response) {
+                              const verifyingToast =
+                                toast.loading('Verifying payment...');
+
+                              try {
+                                const verifyResult =
+                                  await distributorApi.verifyRazorpayPayment({
+                                    razorpay_order_id:
+                                      response.razorpay_order_id,
+                                    razorpay_payment_id:
+                                      response.razorpay_payment_id,
+                                    razorpay_signature:
+                                      response.razorpay_signature,
+                                    lotId:
+                                      activeDrawerLot.id,
+                                    quantity:
+                                      Number(orderQuantity),
+                                    amount:
+                                      totalAmount
+                                  });
+
+                                toast.dismiss(verifyingToast);
+
+                                if (!verifyResult?.success) {
+                                  throw new Error(
+                                    verifyResult?.message ||
+                                      'Payment verification failed.'
+                                  );
+                                }
+
+                                triggerSuccessPDF(
+                                  response.razorpay_payment_id,
+                                  'ONLINE'
+                                );
+
+                                pushDataLayerEvent(
+                                  'payment_success',
+                                  {
+                                    division: 'STONE',
+                                    transaction_id:
+                                      response.razorpay_payment_id,
+                                    value: totalAmount,
+                                    currency: 'INR',
+                                    lot_id: activeDrawerLot.id,
+                                    quantity: Number(orderQuantity)
+                                  }
+                                );
+                              } catch (verifyErr) {
+                                toast.dismiss(verifyingToast);
+
+                                console.error(
+                                  'Stone payment verification failed:',
+                                  verifyErr
+                                );
+
+                                toast.error(
+                                  verifyErr.response?.data?.message ||
+                                    verifyErr.message ||
+                                    'Payment verification failed.'
+                                );
                               }
                             },
+
+                            modal: {
+                              ondismiss: function () {
+                                toast.error(
+                                  'Payment cancelled. Invoice was not generated.'
+                                );
+                              }
+                            },
+
                             prefill: {
                               name: personalDetails.fullName || '',
                               email: personalDetails.email || ''
                             },
-                            theme: { color: '#37424B' }
+
+                            theme: {
+                              color: '#37424B'
+                            }
                           };
-                          const rzp = new window.Razorpay(options);
+
+                          const rzp =
+                            new window.Razorpay(options);
+
                           rzp.open();
                         } catch (payErr) {
-                          console.warn('Razorpay popup bypass / fallback:', payErr);
-                          triggerSuccessPDF('', 'ONLINE');
+                          console.error(
+                            'Stone Razorpay checkout failed:',
+                            payErr
+                          );
+
+                          toast.error(
+                            payErr.response?.data?.message ||
+                              payErr.message ||
+                              'Unable to start payment.'
+                          );
                         }
                       }}
                       onDone={() => setIsOrderDrawerOpen(false)}
@@ -2557,28 +2841,168 @@ export default function Stone() {
           )}
       </AnimatePresence>
 
-{/* Requirement Builder Modal */}
+{/* Requirement Builder Modal — Onion-style UI, Stone palette only */}
       <AnimatePresence>
         {showRequirementBuilder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setShowRequirementBuilder(false)}>
+          <div
+            className="stone-requirement-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-[#20262B]/80 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setShowRequirementBuilder(false)}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
-                  Build Your Stone Requirement
-                </h3>
-                <button onClick={() => setShowRequirementBuilder(false)}
-                  className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                  <FiX size={24} />
-                </button>
-              </div>
+              initial={{ opacity: 0, y: 30, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.97 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Build Your Stone Requirement"
+              className="stone-requirement-builder-modal relative w-full sm:max-w-[920px] max-h-[94dvh] sm:max-h-[calc(100vh-40px)] overflow-y-auto rounded-t-[22px] sm:rounded-[24px] border border-[#4A545E] shadow-2xl bg-gradient-to-br from-[#37424B] via-[#2B333A] to-[#20262B] text-[#F4F2EE]"
+              onClick={e => e.stopPropagation()}
+            >
+              <style>{`
+                /* =====================================================
+                   STONE REQUIREMENT BUILDER — ONION UI STRUCTURE
+                   UI ONLY. Existing StoneRequirementBuilder logic,
+                   validation, analytics, pricing and backend flow stay
+                   untouched.
+                   ===================================================== */
 
-              <div className="p-6">
+                .stone-requirement-backdrop,
+                .stone-requirement-builder-modal {
+                  scrollbar-width: none;
+                  -ms-overflow-style: none;
+                }
+
+                .stone-requirement-backdrop::-webkit-scrollbar,
+                .stone-requirement-builder-modal::-webkit-scrollbar {
+                  display: none;
+                  width: 0;
+                  height: 0;
+                }
+
+                .stone-requirement-builder-modal .stone-requirement-builder-host {
+                  padding: 0 !important;
+                  background: transparent !important;
+                }
+
+                .stone-requirement-builder-modal .stone-requirement-builder-host > div {
+                  background: transparent !important;
+                  color: #F4F2EE !important;
+                }
+
+                /* The builder now owns the title, matching Onion.jsx.
+                   No second Stone title/header is rendered here. */
+                .stone-requirement-builder-modal .ito-rice-header h3 {
+                  color: #F4F2EE !important;
+                }
+
+                /* Stone palette for every builder surface. */
+                .stone-requirement-builder-modal .ito-stone-builder-active {
+                  background: linear-gradient(145deg,#37424B 0%,#2B333A 58%,#20262B 100%) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-kicker,
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-step.completed {
+                  color: #C5A059 !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-progress-track {
+                  background: rgba(244,242,238,.10) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-progress-fill {
+                  background: linear-gradient(90deg,#37424B,#C5A059) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .ito-rice-step.active {
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button[class*="border-2"] {
+                  border-color: rgba(220,204,180,.18) !important;
+                  background: rgba(255,255,255,.035) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button[class*="border-2"].border-blue-600 {
+                  border-color: rgba(197,160,89,.85) !important;
+                  background: rgba(197,160,89,.12) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-blue-600 {
+                  color: #C5A059 !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .bg-blue-100 {
+                  background: rgba(197,160,89,.10) !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button.bg-blue-600,
+                .stone-requirement-builder-modal .ito-stone-builder-active button.bg-emerald-600 {
+                  background: #C5A059 !important;
+                  color: #20262B !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active button.border-gray-300 {
+                  border-color: rgba(220,204,180,.18) !important;
+                  background: rgba(255,255,255,.05) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active input,
+                .stone-requirement-builder-modal .ito-stone-builder-active select {
+                  border-color: rgba(220,204,180,.20) !important;
+                  background: rgba(0,0,0,.20) !important;
+                  color: #F4F2EE !important;
+                }
+
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-500,
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-600,
+                .stone-requirement-builder-modal .ito-stone-builder-active .text-gray-700 {
+                  color: rgba(244,242,238,.58) !important;
+                }
+
+                .stone-requirement-close {
+                  position: absolute;
+                  top: 20px;
+                  right: 20px;
+                  z-index: 50;
+                  width: 42px;
+                  height: 42px;
+                  display: grid;
+                  place-items: center;
+                  border: 1px solid rgba(220,204,180,.18);
+                  border-radius: 50%;
+                  background: rgba(255,255,255,.055);
+                  color: #F4F2EE;
+                  cursor: pointer;
+                  transition: background .2s ease, transform .2s ease;
+                }
+
+                .stone-requirement-close:hover {
+                  background: rgba(255,255,255,.12);
+                  transform: rotate(4deg);
+                }
+
+                @media (max-width: 700px) {
+                  .stone-requirement-close {
+                    top: 14px;
+                    right: 14px;
+                  }
+                }
+              `}</style>
+
+              <button
+                type="button"
+                className="stone-requirement-close"
+                aria-label="Close Stone requirement builder"
+                onClick={() => setShowRequirementBuilder(false)}
+              >
+                <FiX size={24} />
+              </button>
+
+              <div className="stone-requirement-builder-host">
                 <StoneRequirementBuilder onComplete={handleRequirementComplete} />
               </div>
             </motion.div>
@@ -2589,16 +3013,16 @@ export default function Stone() {
       {/* Personal Details Modal */}
       <AnimatePresence>
         {showPersonalDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
             onClick={() => setShowPersonalDetails(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+              className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                   Enter Your Details
                 </h3>
                 <button onClick={() => setShowPersonalDetails(false)}
@@ -2607,7 +3031,7 @@ export default function Stone() {
                 </button>
               </div>
 
-              <form onSubmit={handlePersonalDetailsSubmit} className="p-6 space-y-4">
+              <form onSubmit={handlePersonalDetailsSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                   <input
@@ -2642,7 +3066,7 @@ export default function Stone() {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                     <input
@@ -2685,7 +3109,7 @@ export default function Stone() {
                   className="w-full h-[50px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
                   style={{ backgroundColor: STONE_GATE_THEME.accent, color: STONE_GATE_THEME.accentText }}
                 >
-                  <span>Continue to Product Page</span>
+                  <span>View Total Payable</span>
                   <FiArrowRight size={14} />
                 </button>
               </form>

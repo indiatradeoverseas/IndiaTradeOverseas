@@ -414,6 +414,181 @@ const COMPLIANCE_RICE_RATES = buildRiceRateTable(COMPLIANCE_RICE_RAW);
 
 
 /* =========================================================
+   DIRECT REQUIREMENT -> CHECKOUT
+   Existing requirement + personal details -> payable drawer
+========================================================= */
+
+function normalizeRiceText(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function findRiceRateEntryFromRequirement(requirement) {
+    const requestedVariety = String(
+        requirement?.variety ||
+        requirement?.riceType ||
+        requirement?.product ||
+        ''
+    ).trim();
+
+    if (!requestedVariety) {
+        throw new Error(
+            'Rice variety is missing from the saved requirement.'
+        );
+    }
+
+    const requestedNormalized =
+        normalizeRiceText(requestedVariety);
+
+    const aliases = {
+        '1121': '1121 basmati rice',
+        '1885': '1885 basmati rice',
+        '1718': '1718 basmati rice',
+        '1509': '1509 basmati rice',
+        '1847': '1847 basmati rice',
+        '1401': '1401 basmati rice',
+        'pusa': 'pusa basmati rice',
+        'sugandha': 'sugandha rice',
+        'taj': 'taj rice',
+        'sharbati': 'sharbati rice',
+        'rh 10': 'rh 10 rice',
+        'pr 11 pr 14': 'pr 11 pr 14 rice',
+        'pr 106 pr 47': 'pr 106 pr 47 rice',
+        'pr 26': 'pr 26 rice'
+    };
+
+    const targetNormalized =
+        aliases[requestedNormalized] ||
+        requestedNormalized;
+
+    const entry =
+        REGULAR_RICE_RATES.find((item) => {
+            const itemNormalized =
+                normalizeRiceText(item.variety);
+
+            return (
+                itemNormalized === targetNormalized ||
+                itemNormalized.includes(targetNormalized) ||
+                targetNormalized.includes(itemNormalized)
+            );
+        });
+
+    if (!entry) {
+        throw new Error(
+            `Official Rice rate is not available for ${requestedVariety}.`
+        );
+    }
+
+    return entry;
+}
+
+function resolveDirectRiceCheckout(requirement) {
+    const entry =
+        findRiceRateEntryFromRequirement(requirement);
+
+    /*
+     * The existing requirement builder does not collect the
+     * rate-card processing column. Use the first official
+     * available Regular / Conventional processing rate for
+     * the selected variety.
+     */
+    const processingKey =
+        RICE_PROCESSING_KEYS.find(
+            (key) =>
+                entry.rates[key] != null
+        );
+
+    if (!processingKey) {
+        throw new Error(
+            'No official processing rate is available for the selected Rice variety.'
+        );
+    }
+
+    const ratePerMt =
+        Number(
+            entry.rates[
+                processingKey
+            ]
+        );
+
+    if (
+        !Number.isFinite(
+            ratePerMt
+        ) ||
+        ratePerMt <= 0
+    ) {
+        throw new Error(
+            'The selected Rice rate is invalid.'
+        );
+    }
+
+    const processingLabel =
+        RICE_PROCESSING_LABELS[
+            processingKey
+        ];
+
+    /*
+     * Existing checkout uses Kg.
+     * Default remains the existing MOQ of 20,000 Kg.
+     * Buyer can confirm/change exact Kg before payment.
+     */
+    let defaultQuantityKg = 20000;
+
+    const explicitQuantity =
+        Number(
+            requirement?.exactQuantityKg ??
+            requirement?.quantityKg ??
+            requirement?.quantityValue
+        );
+
+    if (
+        Number.isFinite(
+            explicitQuantity
+        ) &&
+        explicitQuantity >= 20000
+    ) {
+        defaultQuantityKg =
+            explicitQuantity;
+    }
+
+    return {
+        lot: {
+            id:
+                `REGULAR-${entry.variety
+                    .toUpperCase()
+                    .replace(
+                        /[^A-Z0-9]+/g,
+                        '-'
+                    )}-${processingKey.toUpperCase()}`,
+
+            variety:
+                `${entry.variety} (${entry.mm}) — ${processingLabel}`,
+
+            location:
+                'Ex-Mill Haryana (Domestic Grade)',
+
+            price:
+                Number(
+                    (
+                        ratePerMt /
+                        1000
+                    ).toFixed(2)
+                ),
+
+            inventory:
+                'MOQ 20,000 Kg (20 MT / One Truckload)'
+        },
+
+        defaultQuantityKg
+    };
+}
+
+
+/* =========================================================
    PAGE
 ========================================================= */
 
@@ -514,24 +689,65 @@ export default function RicePage() {
         const effectiveTimeline = targetTimeline || 'Within 7 Days';
         if (!fullName?.trim() || !email?.trim() || !mobile?.trim() || !city?.trim() || !state?.trim()) {
             toast.dismiss();
-            toast.error('Please fill all required fields.', { id: 'rice_gate_toast' });
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            toast.dismiss();
-            toast.error('Please enter a valid email address.', { id: 'rice_gate_toast' });
-            return;
-        }
-        const cleanMobile = mobile.replace(/[^0-9]/g, '');
-        if (cleanMobile.length < 10) {
-            toast.dismiss();
-            toast.error('Please enter a valid 10-digit mobile number.', { id: 'rice_gate_toast' });
+
+            toast.error(
+                'Please fill all required fields.',
+                { id: 'rice_gate_toast' }
+            );
+
             return;
         }
 
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            toast.dismiss();
+
+            toast.error(
+                'Please enter a valid email address.',
+                { id: 'rice_gate_toast' }
+            );
+
+            return;
+        }
+
+        const cleanMobile =
+            mobile.replace(
+                /[^0-9]/g,
+                ''
+            );
+
+        if (
+            cleanMobile.length <
+            10
+        ) {
+            toast.dismiss();
+
+            toast.error(
+                'Please enter a valid 10-digit mobile number.',
+                { id: 'rice_gate_toast' }
+            );
+
+            return;
+        }
+
+        if (!builtRequirement) {
+            toast.dismiss();
+
+            toast.error(
+                'Rice requirement is missing. Please build your requirement again.',
+                { id: 'rice_gate_toast' }
+            );
+
+            return;
+        }
+
+        let checkout;
+
         try {
             setLoadingQuickGate(true);
+            checkout = resolveDirectRiceCheckout(builtRequirement);
             const formData = new FormData();
             formData.append('name', fullName);
             formData.append('email', email);
@@ -543,26 +759,104 @@ export default function RicePage() {
             formData.append('registrationSource', 'QUICK_GATE');
 
             const res = await distributorApi.registerDistributor(formData);
-            if (res.success) {
-                const id = res.data?.distributorId || res.data?._id;
-                const token = res.data?.token;
-                setLinkedDistributorId(id || null);
-                if (id) localStorage.setItem('rice_distributor_id', id);
-                if (token) localStorage.setItem('distributor_token', token);
-                setShowPersonalDetails(false);
-                setUserAccessLayer(5);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                toast.dismiss();
-                toast.success('Details saved! Product pricing unlocked.', { id: 'rice_gate_toast' });
+            if (!res?.success) {
+                throw new Error(
+                    res?.message || 'Failed to save buyer details.'
+                );
             }
-        } catch (err) {
-            console.error('Quick gate registration failed:', err);
+
+            const id =
+                res.data
+                    ?.distributorId ||
+                res.data?._id;
+
+            const token =
+                res.data?.token ||
+                res.data
+                    ?.accessToken;
+
+            setLinkedDistributorId(
+                id || null
+            );
+
+            if (id) {
+                setDistributorId(id);
+
+                localStorage.setItem(
+                    'rice_distributor_id',
+                    id
+                );
+            }
+
+            if (token) {
+                localStorage.setItem(
+                    'distributor_token',
+                    token
+                );
+            }
+
+            /*
+             * Direct flow:
+             * requirement -> personal details -> payable drawer.
+             * Do not open the old Layer-5 marketplace here.
+             */
+            setShowPersonalDetails(
+                false
+            );
+
+            setUserAccessLayer(1);
+
+            localStorage.setItem(
+                ACTIVE_LAYER_KEY,
+                '1'
+            );
+
+            setActiveDrawerLot(
+                checkout.lot
+            );
+
+            setOrderQuantity(
+                String(
+                    checkout
+                        .defaultQuantityKg
+                )
+            );
+
+            setPaymentMode(
+                'ONLINE'
+            );
+
+            setIsOrderDrawerOpen(
+                true
+            );
+
             toast.dismiss();
-            toast.error(err.response?.data?.message || 'Failed to save details. Please try again.', { id: 'rice_gate_toast' });
+
+            toast.success(
+                'Details saved! Total payable calculated with 5% GST.',
+                { id: 'rice_gate_toast' }
+            );
+        } catch (err) {
+            console.error(
+                'Quick gate registration failed:',
+                err
+            );
+
+            toast.dismiss();
+
+            toast.error(
+                err.response?.data?.message ||
+                err.message ||
+                'Failed to save details. Please try again.',
+                { id: 'rice_gate_toast' }
+            );
         } finally {
-            setLoadingQuickGate(false);
+            setLoadingQuickGate(
+                false
+            );
         }
     };
+
     const [showSoftGate, setShowSoftGate] = useState(false);
     const [softGateLeadId, setSoftGateLeadId] = useState(null);
     const [linkedDistributorId, setLinkedDistributorId] = useState(null);
@@ -731,15 +1025,11 @@ export default function RicePage() {
                                 status === 'approved'
                             ) {
 
-                                const savedLayer =
-                                    localStorage.getItem(
-                                        ACTIVE_LAYER_KEY
-                                    );
+                                setUserAccessLayer(1);
 
-                                setUserAccessLayer(
-                                    savedLayer === '5'
-                                        ? 5
-                                        : 1
+                                localStorage.setItem(
+                                    ACTIVE_LAYER_KEY,
+                                    '1'
                                 );
 
                             } else if (
@@ -1025,23 +1315,17 @@ export default function RicePage() {
     ===================================================== */
 
     const handleExploreProducts = () => {
+        setShowRequirementBuilder(
+            true
+        );
 
-        const savedId =
-            localStorage.getItem(
-                'rice_distributor_id'
-            );
-
-        const token =
-            localStorage.getItem(
-                'distributor_token'
-            );
-
-        if (!savedId || !token) {
-            setShowRequirementBuilder(true);
-            pushDataLayerEvent('view_product', { division: 'RICE' });
-        } else {
-            setUserAccessLayer(5);
-        }
+        pushDataLayerEvent(
+            'view_product',
+            {
+                division:
+                    'RICE'
+            }
+        );
     };
 
 
@@ -2840,7 +3124,7 @@ export default function RicePage() {
                                         </div>
 
 
-                                        <div className="p-6 space-y-4">
+                                        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
 
                                             <div className="text-[10px] font-mono font-bold text-[#A67C2D] leading-relaxed">
                                                 {
@@ -4089,7 +4373,7 @@ export default function RicePage() {
                             />
 
 
-                            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                            <div className="fixed inset-0 flex items-end sm:items-stretch sm:justify-end">
 
                                 <motion.div
                                     initial={{
@@ -4106,7 +4390,7 @@ export default function RicePage() {
                                         duration:
                                             0.35
                                     }}
-                                    className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between"
+                                    className="w-full sm:w-screen sm:max-w-md max-h-[94dvh] sm:max-h-none sm:h-full bg-white shadow-2xl flex flex-col justify-between rounded-t-2xl sm:rounded-none overflow-hidden"
                                 >
 
                                     <div className="p-6 overflow-y-auto space-y-6 text-left">
@@ -4246,11 +4530,7 @@ export default function RicePage() {
                                                 />
 
                                                 <p className="text-[10px] text-amber-900 font-light leading-relaxed font-serif">
-                                                    This request will
-                                                    be submitted to the
-                                                    rice commercial team
-                                                    for review and
-                                                    confirmation.
+                                                    Review the quantity and total payable below, then proceed to secure payment.
                                                 </p>
 
                                             </div>
@@ -4260,14 +4540,14 @@ export default function RicePage() {
                                     </div>
 
 
-                                    <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-3">
+                                    <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 space-y-3 shrink-0 max-h-[48dvh] sm:max-h-none overflow-y-auto sm:overflow-visible">
 
                                         {/* Payment Mode Selector */}
                                         <div className="space-y-1.5">
                                             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                                                Select Payment Method:
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-2">
+  Payment Method
+</label>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => setPaymentMode('ONLINE')}
@@ -4277,9 +4557,9 @@ export default function RicePage() {
                                                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                                                     }`}
                                                 >
-                                                    <span>💳</span> Online Payment
+                                                    <span>💳</span> Secure Online Payment
                                                 </button>
-                                                <button
+                                                {/* <button
                                                     type="button"
                                                     onClick={() => setPaymentMode('COD')}
                                                     className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
@@ -4289,7 +4569,7 @@ export default function RicePage() {
                                                     }`}
                                                 >
                                                     <span>📦</span> Cash on Delivery
-                                                </button>
+                                                </button> */}
                                             </div>
                                         </div>
 
@@ -4300,15 +4580,15 @@ export default function RicePage() {
 
                                             return (
                                                 <div className="space-y-1.5 font-mono text-xs bg-white p-3 rounded-lg border border-slate-200">
-                                                    <div className="flex items-center justify-between text-slate-600">
+                                                    <div className="flex items-start justify-between gap-3 text-slate-600">
                                                         <span>Base Subtotal:</span>
                                                         <span>INR {subtotal.toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between text-amber-700 font-bold">
+                                                    <div className="flex items-start justify-between gap-3 text-amber-700 font-bold">
                                                         <span>GST (5%):</span>
                                                         <span>INR {gstAmount.toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between text-[#5A4422] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
+                                                    <div className="flex items-start justify-between gap-3 text-[#5A4422] font-extrabold text-sm sm:text-base border-t border-slate-200 pt-1.5 mt-1.5">
                                                         <span className="uppercase">Total Payable:</span>
                                                         <span>INR {totalAmount.toLocaleString()}</span>
                                                     </div>
@@ -4387,47 +4667,210 @@ export default function RicePage() {
                                                     return;
                                                 }
 
-                                                // 3. IF ONLINE PAYMENT: Trigger Razorpay FIRST, Generate PDF ONLY AFTER SUCCESSFUL PAYMENT!
+                                                // 3. IF ONLINE PAYMENT:
+                                                // Razorpay -> backend verification -> invoice.
                                                 try {
-                                                    const orderResult = await distributorApi.createRazorpayOrder({
-                                                        amount: totalAmount,
-                                                        lotId: activeDrawerLot.id,
-                                                        quantity: Number(orderQuantity)
-                                                    });
+                                                    await loadRazorpayScript();
 
-                                                    const { orderId, keyId } = orderResult?.data || {};
+                                                    if (!window.Razorpay) {
+                                                        throw new Error(
+                                                            'Razorpay checkout could not be loaded.'
+                                                        );
+                                                    }
 
-                                                    if (!orderId || !window.Razorpay) {
-                                                        triggerSuccessPDF('', 'ONLINE');
-                                                        return;
+                                                    const orderResult =
+                                                        await distributorApi
+                                                            .createRazorpayOrder({
+                                                                amount:
+                                                                    totalAmount,
+
+                                                                lotId:
+                                                                    activeDrawerLot.id,
+
+                                                                quantity:
+                                                                    Number(
+                                                                        orderQuantity
+                                                                    )
+                                                            });
+
+                                                    if (!orderResult?.success) {
+                                                        throw new Error(
+                                                            orderResult?.message ||
+                                                            'Failed to initialize Razorpay.'
+                                                        );
+                                                    }
+
+                                                    const {
+                                                        orderId,
+                                                        keyId
+                                                    } =
+                                                        orderResult?.data ||
+                                                        {};
+
+                                                    if (
+                                                        !orderId ||
+                                                        !keyId
+                                                    ) {
+                                                        throw new Error(
+                                                            'Payment gateway returned an invalid order response.'
+                                                        );
                                                     }
 
                                                     const options = {
-                                                        key: keyId || 'rzp_test_demo',
-                                                        amount: totalAmount * 100,
-                                                        currency: 'INR',
-                                                        name: 'India Trade Overseas',
-                                                        description: `Rice Sourcing Payment (${activeDrawerLot.variety})`,
-                                                        order_id: orderId,
-                                                        handler: function (response) {
-                                                            triggerSuccessPDF(response.razorpay_payment_id, 'ONLINE');
-                                                        },
+                                                        key:
+                                                            keyId,
+
+                                                        amount:
+                                                            totalAmount *
+                                                            100,
+
+                                                        currency:
+                                                            'INR',
+
+                                                        name:
+                                                            'India Trade Overseas',
+
+                                                        description:
+                                                            `Rice Sourcing Payment (${activeDrawerLot.variety})`,
+
+                                                        order_id:
+                                                            orderId,
+
+                                                        handler:
+                                                            async function (
+                                                                response
+                                                            ) {
+                                                                const verificationToast =
+                                                                    toast.loading(
+                                                                        'Verifying payment...'
+                                                                    );
+
+                                                                try {
+                                                                    const verifyResult =
+                                                                        await distributorApi
+                                                                            .verifyRazorpayPayment({
+                                                                                razorpay_order_id:
+                                                                                    response.razorpay_order_id,
+
+                                                                                razorpay_payment_id:
+                                                                                    response.razorpay_payment_id,
+
+                                                                                razorpay_signature:
+                                                                                    response.razorpay_signature,
+
+                                                                                lotId:
+                                                                                    activeDrawerLot.id,
+
+                                                                                quantity:
+                                                                                    Number(
+                                                                                        orderQuantity
+                                                                                    ),
+
+                                                                                amount:
+                                                                                    totalAmount
+                                                                            });
+
+                                                                    if (
+                                                                        !verifyResult?.success
+                                                                    ) {
+                                                                        throw new Error(
+                                                                            verifyResult?.message ||
+                                                                            'Payment verification failed.'
+                                                                        );
+                                                                    }
+
+                                                                    toast.dismiss(
+                                                                        verificationToast
+                                                                    );
+
+                                                                    triggerSuccessPDF(
+                                                                        response.razorpay_payment_id,
+                                                                        'ONLINE'
+                                                                    );
+
+                                                                    pushDataLayerEvent(
+                                                                        'rice_payment_success',
+                                                                        {
+                                                                            transaction_id:
+                                                                                response.razorpay_payment_id,
+
+                                                                            value:
+                                                                                totalAmount,
+
+                                                                            currency:
+                                                                                'INR',
+
+                                                                            lot_id:
+                                                                                activeDrawerLot.id,
+
+                                                                            quantity:
+                                                                                Number(
+                                                                                    orderQuantity
+                                                                                )
+                                                                        }
+                                                                    );
+                                                                } catch (
+                                                                    verifyErr
+                                                                ) {
+                                                                    toast.dismiss(
+                                                                        verificationToast
+                                                                    );
+
+                                                                    console.error(
+                                                                        'Rice payment verification failed:',
+                                                                        verifyErr
+                                                                    );
+
+                                                                    toast.error(
+                                                                        verifyErr.response?.data?.message ||
+                                                                        verifyErr.message ||
+                                                                        'Payment verification failed.'
+                                                                    );
+                                                                }
+                                                            },
+
                                                         modal: {
-                                                            ondismiss: function () {
-                                                                toast.error('Payment cancelled. PDF invoice was not generated.');
-                                                            }
+                                                            ondismiss:
+                                                                function () {
+                                                                    toast.error(
+                                                                        'Payment cancelled. Invoice was not generated.'
+                                                                    );
+                                                                }
                                                         },
+
                                                         prefill: {
-                                                            name: personalDetails.fullName || '',
-                                                            email: personalDetails.email || ''
+                                                            name:
+                                                                personalDetails.fullName ||
+                                                                '',
+
+                                                            email:
+                                                                personalDetails.email ||
+                                                                ''
                                                         },
-                                                        theme: { color: '#5A4422' }
+
+                                                        theme: {
+                                                            color:
+                                                                '#5A4422'
+                                                        }
                                                     };
-                                                    const rzp = new window.Razorpay(options);
+
+                                                    const rzp =
+                                                        new window.Razorpay(
+                                                            options
+                                                        );
+
                                                     rzp.open();
                                                 } catch (payErr) {
-                                                    console.warn('Razorpay popup bypass / fallback:', payErr);
-                                                    triggerSuccessPDF('', 'ONLINE');
+                                                    console.error(
+                                                        'Rice Razorpay checkout failed:',
+                                                        payErr
+                                                    );
+
+                                                    toast.error(
+                                                        payErr.response?.data?.message ||
+                                                        payErr.message ||
+                                                        'Unable to start payment.'
+                                                    );
                                                 }
                                             }}
                                             onDone={() => setIsOrderDrawerOpen(false)}
@@ -4528,30 +4971,70 @@ export default function RicePage() {
 
             </footer>
 
-{/* Requirement Builder Modal */}
+{/* Requirement Builder Modal — UI ONLY */}
+            <style>{`
+                .ito-rice-builder-backdrop {
+                    background:
+                        radial-gradient(circle at 50% 20%, rgba(166,124,45,.16), transparent 42%),
+                        rgba(20,15,8,.80);
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    overflow-y: auto;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .ito-rice-builder-backdrop::-webkit-scrollbar,
+                .ito-rice-builder-modal::-webkit-scrollbar {
+                    width: 0;
+                    height: 0;
+                    display: none;
+                }
+                .ito-rice-builder-modal {
+                    background: linear-gradient(145deg, rgba(74,56,25,.99), rgba(52,39,17,.995));
+                    box-shadow: 0 40px 100px rgba(0,0,0,.50), 0 0 0 1px rgba(255,255,255,.025);
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                @media (max-width: 700px) {
+                    .ito-rice-builder-backdrop {
+                        align-items: flex-end;
+                        padding: 0;
+                    }
+                    .ito-rice-builder-modal {
+                        width: 100%;
+                        max-height: 94vh;
+                        border-radius: 22px 22px 0 0;
+                    }
+                }
+            `}</style>
+
             <AnimatePresence>
                 {showRequirementBuilder && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-                        onClick={() => setShowRequirementBuilder(false)}>
+                    <div
+                        className="ito-rice-builder-backdrop fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6"
+                        onClick={() => setShowRequirementBuilder(false)}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.97, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-gray-300"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
-                                    Build Your Rice Requirement
-                                </h3>
-                                <button onClick={() => setShowRequirementBuilder(false)}
-                                    className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-200 transition">
-                                    <FiX size={24} />
-                                </button>
-                            </div>
+                            exit={{ opacity: 0, scale: 0.97, y: 20 }}
+                            transition={{ duration: 0.24, ease: "easeOut" }}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Build Your Rice Requirement"
+                            className="ito-rice-builder-modal relative w-full max-w-[920px] max-h-[calc(100vh-40px)] overflow-y-auto rounded-3xl border border-white/10 shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowRequirementBuilder(false)}
+                                aria-label="Close rice requirement builder"
+                                className="absolute right-5 top-5 z-30 w-[42px] h-[42px] flex items-center justify-center rounded-full border border-white/15 bg-white/[0.055] text-white text-[28px] leading-none transition hover:bg-white/[0.12]"
+                            >
+                                <FiX size={24} />
+                            </button>
 
-                            <div className="p-6">
-                                <RiceRequirementBuilder onComplete={handleRequirementComplete} />
-                            </div>
+                            <RiceRequirementBuilder onComplete={handleRequirementComplete} />
                         </motion.div>
                     </div>
                 )}
@@ -4560,16 +5043,16 @@ export default function RicePage() {
             {/* Personal Details Modal */}
             <AnimatePresence>
                 {showPersonalDetails && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 overflow-y-auto"
                         onClick={() => setShowPersonalDetails(false)}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="w-full max-w-md rounded-2xl shadow-2xl bg-white border border-gray-300"
+                            className="w-full sm:max-w-md max-h-[94dvh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white border border-gray-300"
                             onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
-                                <h3 className="text-xl font-semibold text-black uppercase tracking-wide">
+                            <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 bg-gray-50 rounded-t-2xl sticky top-0 z-10">
+                                <h3 className="text-base sm:text-xl font-semibold text-black uppercase tracking-wide leading-tight pr-2">
                                     Enter Your Details
                                 </h3>
                                 <button onClick={() => setShowPersonalDetails(false)}
@@ -4578,7 +5061,7 @@ export default function RicePage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handlePersonalDetailsSubmit} className="p-6 space-y-4">
+                            <form onSubmit={handlePersonalDetailsSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(94dvh-72px)] sm:max-h-[calc(90vh-72px)]">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                                     <input
@@ -4613,7 +5096,7 @@ export default function RicePage() {
                                         required
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                                         <input

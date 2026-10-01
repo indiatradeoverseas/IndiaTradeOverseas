@@ -106,6 +106,8 @@ import Onion from './pages/public/Onion';
 import StonePricing from './pages/public/StonePricing';
 import RicePricing from './pages/public/RicePricing';
 import TeaPricing from './pages/public/TeaPricing';
+import CoalPricing from './pages/public/CoalPricing';
+import OnionPricing from './pages/public/OnionPricing';
 
 import SecurityGuard from './components/security/SecurityGuard';
 
@@ -169,6 +171,21 @@ const PUBLIC_PAGE_META = Object.freeze({
     landing_page_type: 'product'
   },
 
+  /*
+   * COAL
+   */
+  '/coal': {
+    page_type: 'commercial_landing',
+    vertical: 'coal',
+    landing_page_type: 'product'
+  },
+
+    '/nashik-onion': {
+    page_type: 'commercial_landing',
+    vertical: 'onion',
+    landing_page_type: 'product'
+  },
+
   '/ito-ads': {
     page_type: 'commercial_landing',
     vertical: 'ito_ads',
@@ -183,9 +200,9 @@ const PUBLIC_PAGE_META = Object.freeze({
     page_type: 'legal'
   },
 
-  '/terms-and-conditions': {
-    page_type: 'legal'
-  },
+  // '/terms-and-conditions': {
+  //   page_type: 'legal'
+  // },
 
   '/fraud-payment-policy': {
     page_type: 'legal'
@@ -686,7 +703,6 @@ function AppLayout() {
   const location =
     useLocation();
 
-
   useEffect(
     () => {
       if (loading) {
@@ -1066,7 +1082,9 @@ function AppLayout() {
 
             <Route
               path="/crm/itoads-orders"
-              element={<ITOAdsOrders />}
+              element={
+                <ITOAdsOrders />
+              }
             />
 
             <Route
@@ -1102,14 +1120,14 @@ function AppLayout() {
                     'HR'
                 )
                   ? (
-                      <CareerLeads />
-                    )
+                    <CareerLeads />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1133,14 +1151,14 @@ function AppLayout() {
                     true
                 )
                   ? (
-                      <Leads />
-                    )
+                    <Leads />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1166,14 +1184,14 @@ function AppLayout() {
                     true
                 )
                   ? (
-                      <LeadDetail />
-                    )
+                    <LeadDetail />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1193,17 +1211,16 @@ function AppLayout() {
                   )
                 )
                   ? (
-                      <Quotations />
-                    )
+                    <Quotations />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
-
 
             <Route
               path="/crm/dispatches"
@@ -1244,14 +1261,14 @@ function AppLayout() {
                     true
                 )
                   ? (
-                      <Documents />
-                    )
+                    <Documents />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1301,14 +1318,14 @@ function AppLayout() {
                   Boolean(user)
                 )
                   ? (
-                      <Tasks />
-                    )
+                    <Tasks />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1328,14 +1345,14 @@ function AppLayout() {
                   )
                 )
                   ? (
-                      <Employees />
-                    )
+                    <Employees />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1362,14 +1379,14 @@ function AppLayout() {
                   )
                 )
                   ? (
-                      <EmployeeProfile />
-                    )
+                    <EmployeeProfile />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1448,14 +1465,14 @@ function AppLayout() {
                   )
                 )
                   ? (
-                      <Applications />
-                    )
+                    <Applications />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1481,14 +1498,14 @@ function AppLayout() {
                     true
                 )
                   ? (
-                      <Jobs />
-                    )
+                    <Jobs />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1631,14 +1648,14 @@ function AppLayout() {
                   user
                 )
                   ? (
-                      <ControlledCampaigns />
-                    )
+                    <ControlledCampaigns />
+                  )
                   : (
-                      <Navigate
-                        to="/crm/dashboard"
-                        replace
-                      />
-                    )
+                    <Navigate
+                      to="/crm/dashboard"
+                      replace
+                    />
+                  )
               }
             />
 
@@ -1687,12 +1704,25 @@ function AppLayout() {
     location.pathname ===
     '/nashik-onion';
 
+  const isCoal =
+    location.pathname ===
+    '/coal';
+
+  /*
+   * Coal pricing is part of the commercial
+   * pricing flow and should behave exactly
+   * like Rice / Tea / Stone pricing pages.
+   */
+  const isCoalPricing =
+    location.pathname ===
+    '/coal/pricing';
+
   const hidePublicChrome =
-    isITOAds ||
-    isOnion ||
     isPricingRoute(
       location.pathname
-    );
+    ) ||
+    isCoalPricing ||
+    isITOAds;
 
 
   return (
@@ -1705,6 +1735,11 @@ function AppLayout() {
 
       <main>
         <Routes>
+
+          {/* =========================
+              MAIN PUBLIC ROUTES
+          ========================= */}
+
           <Route
             path="/"
             element={
@@ -1754,7 +1789,6 @@ function AppLayout() {
             }
           />
 
-
           <Route
             path="/our-services"
             element={
@@ -1762,12 +1796,29 @@ function AppLayout() {
             }
           />
 
+
+          {/* =========================
+              COAL
+          ========================= */}
+
           <Route
             path="/coal"
             element={
               <Coal />
             }
           />
+
+          <Route
+            path="/coal/pricing"
+            element={
+              <CoalPricing />
+            }
+          />
+
+
+          {/* =========================
+              PRAKRITI
+          ========================= */}
 
           <Route
             path="/prakriti"
@@ -1793,6 +1844,11 @@ function AppLayout() {
             }
           />
 
+
+          {/* =========================
+              STONE
+          ========================= */}
+
           <Route
             path="/stone"
             element={
@@ -1807,6 +1863,11 @@ function AppLayout() {
             }
           />
 
+
+          {/* =========================
+              RICE
+          ========================= */}
+
           <Route
             path="/rice/pricing"
             element={
@@ -1814,12 +1875,22 @@ function AppLayout() {
             }
           />
 
+
+          {/* =========================
+              TEA
+          ========================= */}
+
           <Route
             path="/tea/pricing"
             element={
               <TeaPricing />
             }
           />
+
+
+          {/* =========================
+              ITO ADS
+          ========================= */}
 
           <Route
             path="/ito-ads"
@@ -1836,40 +1907,53 @@ function AppLayout() {
             }
           />
 
-          <Route
-            path="/privacy-policy"
-            element={
-              <PrivacyPolicy />
-            }
-          />
 
-          <Route
-            path="/terms"
-            element={
-              <Terms />
-            }
-          />
+          {/* =========================
+    LEGAL
+========================= */}
 
-          <Route
-            path="/terms-and-conditions"
-            element={
-              <Terms />
-            }
-          />
+<Route
+  path="/privacy-policy"
+  element={
+    <PrivacyPolicy />
+  }
+/>
 
-          <Route
-            path="/fraud-payment-policy"
-            element={
-              <FraudPaymentPolicy />
-            }
-          />
+<Route
+  path="/terms"
+  element={
+    <Terms />
+  }
+/>
 
-          <Route
-            path="/disclaimer"
-            element={
-              <Disclaimer />
-            }
-          />
+<Route
+  path="/terms-and-conditions"
+  element={
+    <Navigate
+      to="/terms"
+      replace
+    />
+  }
+/>
+
+<Route
+  path="/fraud-payment-policy"
+  element={
+    <FraudPaymentPolicy />
+  }
+/>
+
+<Route
+  path="/disclaimer"
+  element={
+    <Disclaimer />
+  }
+/>
+
+
+          {/* =========================
+              ONION
+          ========================= */}
 
           <Route
             path="/nashik-onion"
@@ -1877,18 +1961,24 @@ function AppLayout() {
               <Onion />
             }
           />
+
+          <Route
+  path="/nashik-onion/pricing"
+  element={<OnionPricing />}
+/>
+
         </Routes>
       </main>
 
 
-      {isITOAds && (
+      {/* {isITOAds && (
         <CommercialRequirement
           key={
             location.pathname
           }
           category="ITO_ADS"
         />
-      )}
+      )} */}
 
 
       {!hidePublicChrome && (
@@ -1897,7 +1987,8 @@ function AppLayout() {
 
 
       {!isITOAds &&
-        !isOnion && (
+        !isOnion &&
+        !isCoal && (
           <ChatWidget />
         )}
 
@@ -1909,6 +2000,7 @@ function AppLayout() {
         CRM/auth/employee routes are excluded from acquisition analytics,
         so they do not need the customer-facing tracking banner.
       */}
+
       <TrackingConsentBanner />
     </div>
   );
@@ -1923,6 +2015,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+
         <Toaster
           position="top-right"
           toastOptions={{
@@ -1977,6 +2070,7 @@ function App() {
         <SecurityGuard>
           <AppLayout />
         </SecurityGuard>
+
       </AuthProvider>
     </Router>
   );
