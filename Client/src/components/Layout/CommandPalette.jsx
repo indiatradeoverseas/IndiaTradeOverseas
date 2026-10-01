@@ -69,29 +69,7 @@ export default function CommandPalette() {
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="hidden md:flex items-center gap-2 text-[10px] uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-all cursor-pointer"
-        style={{
-          fontFamily: 'var(--crm-font-mono)',
-          color: 'var(--crm-ink-soft)',
-          borderColor: 'var(--crm-line)',
-          background: 'var(--crm-bg-raised)'
-        }}
-      >
-        <FiSearch size={12} />
-        <span>Jump to...</span>
-        <span
-          className="ml-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm"
-          style={{ background: 'var(--crm-bg-sunken)', color: 'var(--crm-ink-faint)' }}
-        >
-          <FiCommand size={9} />K
-        </span>
-      </button>
-
-      <AnimatePresence>
+    <AnimatePresence>
         {open && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -172,6 +150,5 @@ export default function CommandPalette() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
   );
 }

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut, FiCoffee } from 'react-icons/fi';
+import { FiMenu, FiX, FiSun, FiMoon, FiLogIn, FiLogOut, FiCoffee, FiSearch, FiAlertCircle } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
 import VoiceStatusPill from './VoiceStatusPill';
 import NotificationDropdown from '../common/NotificationDropdown';
 import AiChatMessenger from '../common/AiChatMessenger';
-import { ItcLogoBadge } from '../common/ItcLogo';
+import ItcLogo, { ItcLogoBadge } from '../common/ItcLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { attendanceApi } from '../../api/attendance';
 import toast from 'react-hot-toast';
-// Removed the duplicate main-site Navbar import from here to protect CRM view real estate
 
 export default function PortalLayout({ children }) {
   const { user, logout } = useAuth();
@@ -74,6 +73,16 @@ export default function PortalLayout({ children }) {
     const s = totalSeconds % 60;
     const pad = (n) => String(n).padStart(2, '0');
     return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  };
+
+  const triggerSearch = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      code: 'KeyK',
+      ctrlKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
   };
 
   const handleCheckIn = async () => {
@@ -157,122 +166,182 @@ export default function PortalLayout({ children }) {
 
   return (
     <div
-      className={`crm-portal min-h-screen antialiased overflow-x-hidden ${effectiveTheme === 'light' ? 'light-theme' : ''} ${isTransportManagerRoute ? 'transport-shell-layout' : ''}`}
+      className={`crm-portal min-h-screen flex flex-col antialiased overflow-x-hidden ${effectiveTheme === 'light' ? 'light-theme' : 'dark'} ${isTransportManagerRoute ? 'transport-shell-layout' : ''}`}
       style={{ background: 'var(--crm-bg)', color: 'var(--crm-ink-soft)', fontFamily: 'var(--crm-font-body)' }}
     >
-
-      {/* MOBILE TOP BAR */}
-      <div
-        className={`md:hidden fixed top-0 left-0 right-0 z-[52] border-b shadow-sm backdrop-blur-xl ${isTransportManagerRoute ? 'transport-mobile-topbar' : ''}`}
-        style={{ background: 'color-mix(in srgb, var(--crm-bg-raised) 96%, transparent)', borderColor: 'var(--crm-line)' }}
+      {/* TOP HEADER NAVBAR */}
+      <header
+        className="sticky top-0 z-[52] w-full h-[62px] border-b flex items-center justify-between px-3 sm:px-6 backdrop-blur-xl shrink-0 transition-colors duration-200"
+        style={{
+          background: effectiveTheme === 'light' ? '#FFFFFF' : '#000000ff',
+          borderColor: effectiveTheme === 'light' ? '#E2E8F0' : '#01050bff'
+        }}
       >
-        <div className="flex min-h-[54px] items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
+        {/* MOBILE HEADER BAR (Clean Icon Buttons without Background Box) */}
+        <div className="flex md:hidden items-center justify-between w-full px-1 py-1.5 transition-colors duration-200">
+          {/* Left: Hamburger Button */}
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
-            className="inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border transition duration-200 focus:outline-none cursor-pointer"
-            style={{ color: 'var(--crm-ink)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+            className="inline-flex items-center justify-center p-1.5 text-slate-800 dark:text-slate-100 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
             aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={sidebarOpen ? 'close' : 'open'}
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="inline-flex"
-              >
-                {sidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
-              </motion.span>
-            </AnimatePresence>
+            <FiMenu size={20} className="text-slate-800 dark:text-slate-100" />
           </button>
 
-          <div
-            className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-max"
-            style={{ fontFamily: 'var(--crm-font-display)' }}
-          >
+          {/* Center: INDIA TRADE CENTRE text */}
+          <div className="flex items-center justify-center text-center px-1">
             <span
-              className="font-extrabold tracking-tight sm:tracking-wider text-[12px] sm:text-[14px] uppercase whitespace-nowrap block"
-              style={{ color: 'var(--crm-heading)', fontFamily: 'var(--crm-font-display)' }}
+              className="font-serif font-black uppercase text-[12px] sm:text-[14px] tracking-wider itc-brand-title"
+              style={{ fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif", fontWeight: 900 }}
             >
-              India Trade Center
+              INDIA TRADE CENTRE
             </span>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-1.5">
+          {/* Right: Actions [IN] [Theme] [Bell] [Alert] */}
+          <div className="flex items-center gap-2">
+            {/* IN Badge */}
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-500/60 text-emerald-600 dark:text-emerald-400 bg-transparent">
+              IN
+            </span>
+
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex items-center justify-center p-1 text-slate-700 dark:text-slate-200 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
+              aria-label="Toggle Theme"
+            >
+              {effectiveTheme === 'light' ? <FiMoon size={18} className="text-slate-700 dark:text-slate-200" /> : <FiSun size={18} className="text-amber-400" />}
+            </button>
+
+            {/* Notification Dropdown */}
+            <NotificationDropdown compact />
+
+            {/* Alert Icon Button */}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-1 text-[#FF4D4F] dark:text-rose-400 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
+              title="Alerts"
+            >
+              <FiAlertCircle size={18} className="text-[#FF4D4F] dark:text-rose-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* DESKTOP HEADER BAR (Visible on screens >= md) */}
+        <div className="hidden md:flex items-center justify-between w-full">
+          {/* Left: Brand Logo */}
+          <div className="flex items-center gap-3 shrink-0">
+            <ItcLogo showText={true} size="md" />
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {user && (
-              <div className="transport-attendance-actions flex items-center gap-1 font-mono shrink-0">
+              <div className="hidden sm:flex items-center gap-2 font-mono shrink-0">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
+                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-2xs disabled:opacity-50"
                   >
-                    In
+                    <FiLogIn size={12} /> Check In
                   </button>
                 )}
+
                 {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
                   <>
                     {!todayAttendance.lunchStartAt && (
                       <button
                         onClick={handleLunchStart}
                         disabled={loadingAttendance}
-                        className=" text-amber-300 border border-amber-800/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer flex items-center gap-0.5 whitespace-nowrap shadow-xs"
+                        className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-2xs disabled:opacity-50"
+                        title="Start Lunch Break"
                       >
-                        <FiCoffee size={8} /> Lunch
+                        <FiCoffee size={12} /> Lunch
                       </button>
                     )}
+
                     {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
                       <button
                         onClick={handleLunchEnd}
                         disabled={loadingAttendance}
-                        className="bg-[#1f170d] text-[#f5c46c] border border-[#c89a54] text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer animate-pulse flex items-center gap-0.5 whitespace-nowrap shadow-xs"
+                        className="flex items-center gap-1.5 bg-[#1f170d] hover:bg-[#2a1f11] border border-[#c89a54] text-[#f5c46c] text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-md animate-pulse disabled:opacity-50"
+                        title="Click to end lunch break and return to work"
                       >
-                        <FiCoffee size={8} /> {formatElapsed(lunchElapsed)}
+                        <FiCoffee size={12} /> BACK TO WORK <span className="font-bold text-amber-200">{formatElapsed(lunchElapsed)}</span>
                       </button>
                     )}
+
                     <button
                       onClick={handleCheckOut}
                       disabled={loadingAttendance}
-                      className=" text-rose-400 border border-rose-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
+                      className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-2xs disabled:opacity-50"
                     >
-                      Out
+                      <FiLogOut size={12} /> Check Out
                     </button>
                   </>
                 )}
+
                 {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
                   <button
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="bg-emerald-950/90 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded cursor-pointer whitespace-nowrap shadow-xs"
+                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition cursor-pointer shadow-2xs disabled:opacity-50"
                   >
-                    In
+                    <FiLogIn size={12} /> Check In
                   </button>
                 )}
               </div>
             )}
+
+            {/* Theme Switcher Button */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-md border text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer shrink-0"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] transition cursor-pointer shrink-0"
               style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+              title="Toggle Theme"
               aria-label="Toggle Theme"
             >
-              {effectiveTheme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}
+              {effectiveTheme === 'light' ? <FiMoon size={16} /> : <FiSun size={16} />}
             </button>
-            <NotificationDropdown compact />
-            <VoiceStatusPill compact />
+
+            {/* Notifications Dropdown */}
+            <NotificationDropdown />
+
+            {/* Indian Flag Badge */}
+            <div
+              className="flex items-center justify-center px-2 py-1 rounded-md border border-slate-300/40 dark:border-slate-700/60 bg-white/80 dark:bg-slate-800/80 shadow-2xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+              title="India (IN)"
+            >
+              <svg className="w-5 h-3.5 rounded-[1px] shadow-2xs" viewBox="0 0 640 480">
+                <path fill="#f93" d="M0 0h640v160H0z"/>
+                <path fill="#fff" d="M0 160h640v160H0z"/>
+                <path fill="#128807" d="M0 320h640v160H0z"/>
+                <g transform="translate(320 240)">
+                  <circle r="60" fill="none" stroke="#008" strokeWidth="6"/>
+                  <circle r="12" fill="#008"/>
+                  <path stroke="#008" strokeWidth="3" d="M0-60V60M-60 0H60M-42.4-42.4l84.8 84.8M-42.4 42.4l84.8-84.8M-55.4-23l110.8 46M-55.4 23l110.8-46M-23-55.4l46 110.8M23-55.4l-46 110.8"/>
+                </g>
+              </svg>
+            </div>
+
+            <VoiceStatusPill />
+            <CommandPalette />
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="flex min-h-screen md:h-screen">
-
-        {/* PORTAL SIDEBAR BRAND CONTEXT CONTAINER */}
+      {/* MAIN LAYOUT BODY */}
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden relative">
+        {/* PORTAL SIDEBAR */}
         <div
-          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:sticky md:top-0 md:h-screen md:flex-shrink-0 md:translate-x-0 md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
+          className={`fixed inset-y-0 left-0 z-[60] w-64 sm:w-72 transform border-r transition-all duration-300 ease-in-out shadow-2xl md:sticky md:top-0 md:h-[calc(100vh-62px)] md:flex-shrink-0 md:translate-x-0 md:shadow-none ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
           style={{ borderColor: 'var(--crm-line)' }}
         >
           <Sidebar
@@ -297,112 +366,7 @@ export default function PortalLayout({ children }) {
         </AnimatePresence>
 
         {/* Core Main Viewport Workspace Terminal Container */}
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden md:h-screen" style={{ background: 'var(--crm-bg)' }}>
-          {/* Buffer spacer block to balance mobile fixed top bar overlay */}
-          <div className="md:hidden h-[54px] shrink-0" />
-
-          {/* Desktop utility bar */}
-          <div
-            className="hidden md:flex min-h-[56px] shrink-0 items-center justify-between gap-4 border-b px-5 lg:px-8 py-2.5 backdrop-blur-xl"
-            style={{ borderColor: 'var(--crm-line)', background: 'color-mix(in srgb, var(--crm-bg-raised) 94%, transparent)' }}
-          >
-            <div className="min-w-0 flex items-center gap-2.5">
-              {/* <ItcLogoBadge size="sm" /> */}
-              <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: 'var(--crm-heading)' }}>
-                  India Trade Center
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--crm-ink-faint)' }}>
-                  <span className="font-semibold" style={{ color: 'var(--crm-heading)' }}>CRM Workspace</span>
-                  {user && <span className="hidden lg:inline">· {user.department || user.role || 'Authenticated user'}</span>}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-3">
-              {user && (
-                <div className="flex items-center gap-2 mr-4 font-mono">
-                  {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
-                    <button
-                      onClick={handleCheckIn}
-                      disabled={loadingAttendance}
-                      className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                    >
-                      <FiLogIn size={12} /> Check In
-                    </button>
-                  )}
-
-                  {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
-                    <>
-                      {/* Lunch Break Controls */}
-                      {!todayAttendance.lunchStartAt && (
-                        <button
-                          onClick={handleLunchStart}
-                          disabled={loadingAttendance}
-                          className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                          title="Start Lunch Break"
-                        >
-                          <FiCoffee size={12} /> Lunch Break
-                        </button>
-                      )}
-
-                      {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
-                        <button
-                          onClick={handleLunchEnd}
-                          disabled={loadingAttendance}
-                          className="flex items-center gap-1.5 bg-[#1f170d] hover:bg-[#2a1f11] border border-[#c89a54] text-[#f5c46c] text-[10px] font-mono font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-md animate-pulse disabled:opacity-50"
-                          title="Click to end lunch break and return to work"
-                        >
-                          <FiCoffee size={12} /> BACK TO WORK <span className="font-bold text-amber-200">{formatElapsed(lunchElapsed)}</span>
-                        </button>
-                      )}
-
-                      {todayAttendance.lunchEndAt && (
-                        <span
-                          className="text-[10px] font-mono text-amber-300/90 bg-amber-950/40 border border-amber-900/40 px-2.5 py-1 rounded flex items-center gap-1"
-                          title={`Lunch break taken: ${todayAttendance.lunchDurationMinutes || 0} min`}
-                        >
-                          <FiCoffee size={10} /> Lunch ({todayAttendance.lunchDurationMinutes || 0}m)
-                        </span>
-                      )}
-
-                      {/* Check Out Button */}
-                      <button
-                        onClick={handleCheckOut}
-                        disabled={loadingAttendance}
-                        className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                      >
-                        <FiLogOut size={12} /> Check Out
-                      </button>
-                    </>
-                  )}
-
-                  {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
-                    <button
-                      onClick={handleCheckIn}
-                      disabled={loadingAttendance}
-                      className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded transition cursor-pointer shadow-sm disabled:opacity-50"
-                      title="Click to check in again"
-                    >
-                      <FiLogIn size={12} /> Check In
-                    </button>
-                  )}
-                </div>
-              )}
-              <NotificationDropdown />
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition cursor-pointer text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]"
-                title="Toggle Theme"
-              >
-                {effectiveTheme === 'light' ? <FiMoon size={13} /> : <FiSun size={13} />}
-              </button>
-              <VoiceStatusPill />
-              <CommandPalette />
-            </div>
-          </div>
-
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden h-[calc(100vh-62px)]" style={{ background: 'var(--crm-bg)' }}>
           <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 sm:px-5 sm:py-6 md:px-6 md:py-7 lg:px-8 scroll-smooth">
             <div className="mx-auto w-full max-w-[1800px] min-w-0">
               {children}

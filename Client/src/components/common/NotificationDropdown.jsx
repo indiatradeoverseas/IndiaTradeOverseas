@@ -137,12 +137,16 @@ export default function NotificationDropdown({ compact = false }) {
         onClick={() => setIsOpen(!isOpen)}
         className={`relative flex items-center justify-center transition cursor-pointer font-mono ${
           compact 
-            ? 'p-1 text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)]' 
+            ? 'p-1.5 text-slate-800 dark:text-white hover:opacity-80 bg-transparent border-0' 
             : 'p-1.5 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] text-[var(--crm-ink-soft)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg-raised)]'
         }`}
         title="Notifications Hub"
       >
-        <FiBell size={compact ? 18 : 13} />
+        <FiBell
+          size={compact ? 20 : 13}
+          className="text-slate-800 dark:text-white shrink-0"
+          style={{ strokeWidth: 2.2 }}
+        />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white shadow-sm font-mono animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}

@@ -6,7 +6,8 @@ import {
   FiX,
   FiLogOut,
   FiLayers,
-  FiChevronRight
+  FiChevronRight,
+  FiChevronDown
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { notificationsApi } from '../../api/notifications';
@@ -16,7 +17,7 @@ import {
   getCrmAdminNavItems,
   shouldShowCrmAdminMenu
 } from '../../config/crmNav';
-import { ItcLogoBadge } from '../common/ItcLogo';
+import ItcLogo, { ItcLogoBadge } from '../common/ItcLogo';
 
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
@@ -97,64 +98,38 @@ export default function Sidebar({ onClose }) {
         borderColor: 'var(--crm-line)'
       }}
     >
-      {/* Sidebar Header Block */}
-      <div
-        className="flex min-h-[92px] items-center justify-between gap-3 border-b px-4 py-4 sm:px-5"
-        style={{ borderColor: 'var(--crm-line)' }}
-      >
-        <div className="flex items-center gap-3 min-w-0 flex-1 text-left">
-          <ItcLogoBadge size="sm" className="shrink-0" />
-          <div className="min-w-0 flex-1">
-            <h1
-              className="text-[13px] sm:text-[15px] font-extrabold uppercase tracking-wider leading-tight text-left break-words text-white"
-              style={{ fontFamily: 'var(--crm-font-display)', color: '#FFFFFF' }}
-            >
-              India Trade Center
-            </h1>
-          
-          </div>
+      {/* Sidebar Top Header matching Image 2 */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b" style={{ borderColor: 'var(--crm-line)' }}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <ItcLogo showText={true} size="md" />
         </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all cursor-pointer"
-            style={{ color: 'var(--crm-ink-faint)', borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-900 hover:bg-slate-100 transition-all shadow-md cursor-pointer border border-slate-200"
             aria-label="Close Sidebar"
           >
-            <FiX size={18} />
+            <FiX size={18} className="text-slate-900 font-bold" />
           </button>
         )}
       </div>
 
+      {/* User Workspace Info Card matching Images 3 & 4 */}
       <div className="px-3 pt-3">
-        <div
-          className="rounded-xl border px-3 py-2.5"
-          style={{
-            borderColor: 'var(--crm-line)',
-            background: 'var(--crm-bg-sunken)'
-          }}
-        >
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/70 bg-white dark:bg-[#0B172E] p-3.5 shadow-sm text-left transition-colors duration-200">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div
-                className="truncate text-[10px] font-semibold"
-                style={{ color: 'var(--crm-heading)' }}
-              >
-                {user?.name || user?.fullName || user?.email || 'Authenticated user'}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs sm:text-[13px] font-bold text-[#071B3A] dark:text-white leading-tight">
+                {user?.name || user?.fullName || user?.email || 'Md Ramiz Raza Khan'}
               </div>
-              <div
-                className="mt-0.5 truncate text-[9px] uppercase tracking-[0.12em]"
-                style={{ color: 'var(--crm-ink-faint)' }}
-              >
-                {user?.department || 'CRM'} workspace
+              <div className="mt-1 truncate text-[9.5px] font-extrabold uppercase tracking-widest text-[#64748B] dark:text-slate-300">
+                {user?.role || user?.department || 'ADMIN'} WORKSPACE
               </div>
             </div>
-            <FiLayers
-              size={15}
-              className="shrink-0"
-              style={{ color: 'var(--crm-accent)' }}
-            />
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 dark:border-amber-500/50 flex items-center justify-center shrink-0">
+              <FiLayers size={16} className="text-amber-500 dark:text-amber-400" />
+            </div>
           </div>
         </div>
       </div>
