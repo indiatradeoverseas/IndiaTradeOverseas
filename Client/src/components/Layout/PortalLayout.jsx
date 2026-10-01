@@ -195,7 +195,7 @@ export default function PortalLayout({ children }) {
               className="font-serif font-black uppercase text-[12px] sm:text-[14px] tracking-wider itc-brand-title"
               style={{ fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif", fontWeight: 900 }}
             >
-              INDIA TRADE CENTRE
+              INDIA TRADE CENTER
             </span>
           </div>
 
