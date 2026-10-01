@@ -747,7 +747,7 @@ export default function SalesExecutiveDashboard() {
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="text-[10px] uppercase font-mono font-bold tracking-widest text-[var(--crm-ink-faint)]">
-              INDIA TRADE CENTRE &gt; SALES &gt; DASHBOARD
+              INDIA TRADE CENTER &gt; SALES &gt; DASHBOARD
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--crm-heading)] font-sans tracking-tight flex items-center gap-2">
               👋 {greeting}, {user?.fullName || user?.name || 'Sales Executive'}

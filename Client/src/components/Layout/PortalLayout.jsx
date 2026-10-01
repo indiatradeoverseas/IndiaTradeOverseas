@@ -189,22 +189,84 @@ export default function PortalLayout({ children }) {
             <FiMenu size={20} className="text-slate-800 dark:text-slate-100" />
           </button>
 
-          {/* Center: INDIA TRADE CENTRE text */}
-          <div className="flex items-center justify-center text-center px-1">
+          {/* Center: INDIA TRADE CENTER text */}
+          <div className="flex items-center justify-center text-center px-1 shrink-0">
             <span
-              className="font-serif font-black uppercase text-[12px] sm:text-[14px] tracking-wider itc-brand-title"
+              className="font-serif font-black uppercase text-[11px] sm:text-[14px] tracking-wide whitespace-nowrap itc-brand-title"
               style={{ fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif", fontWeight: 900 }}
             >
-              INDIA TRADE CENTRE
+              INDIA TRADE CENTER
             </span>
           </div>
 
-          {/* Right: Actions [IN] [Theme] [Bell] [Alert] */}
-          <div className="flex items-center gap-2">
-            {/* IN Badge */}
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-500/60 text-emerald-600 dark:text-emerald-400 bg-transparent">
-              IN
-            </span>
+          {/* Right: Actions [IN/OUT Badge] [Theme] [Bell] [Alert] */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Mobile Check-In / Lunch / Check-Out Button (Compact [IN] / [OUT] Badge matching Reference) */}
+            {user && (
+              <div className="flex items-center shrink-0">
+                {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
+                  <button
+                    type="button"
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="px-2 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                    title="Click to Check In"
+                  >
+                    {loadingAttendance ? '...' : 'IN'}
+                  </button>
+                )}
+
+                {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {!todayAttendance.lunchStartAt && (
+                      <button
+                        type="button"
+                        onClick={handleLunchStart}
+                        disabled={loadingAttendance}
+                        className="px-1.5 py-0.5 rounded border border-amber-500/80 text-amber-600 dark:text-amber-400 font-bold text-[10px] tracking-wider bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                        title="Start Lunch Break"
+                      >
+                        ☕ LUNCH
+                      </button>
+                    )}
+
+                    {todayAttendance.lunchStartAt && !todayAttendance.lunchEndAt && (
+                      <button
+                        type="button"
+                        onClick={handleLunchEnd}
+                        disabled={loadingAttendance}
+                        className="px-1.5 py-0.5 rounded border border-amber-500/80 text-amber-500 font-mono font-bold text-[10px] bg-amber-500/20 animate-pulse active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                        title="End Lunch Break"
+                      >
+                        ☕ {formatElapsed(lunchElapsed)}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleCheckOut}
+                      disabled={loadingAttendance}
+                      className="px-2 py-0.5 rounded border border-rose-500/80 text-rose-600 dark:text-rose-400 font-bold text-[11px] tracking-wider bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                      title="Click to Check Out"
+                    >
+                      OUT
+                    </button>
+                  </div>
+                )}
+
+                {todayAttendance && (todayAttendance.checkOutTime || todayAttendance.checkOutAt) && (
+                  <button
+                    type="button"
+                    onClick={handleCheckIn}
+                    disabled={loadingAttendance}
+                    className="px-2 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                    title="Click to Check In again"
+                  >
+                    {loadingAttendance ? '...' : 'IN'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Theme Toggle Button */}
             <button

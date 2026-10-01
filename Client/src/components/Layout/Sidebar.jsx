@@ -100,8 +100,8 @@ export default function Sidebar({ onClose }) {
     >
       {/* Sidebar Top Header matching Image 2 */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b" style={{ borderColor: 'var(--crm-line)' }}>
-        <div className="flex items-center gap-2.5 min-w-0">
-          <ItcLogo showText={true} size="md" />
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <ItcLogo showText={true} stackedText={true} size="md" />
         </div>
         {onClose && (
           <button
