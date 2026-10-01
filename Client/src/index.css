@@ -279,6 +279,50 @@ aside.crm-sidebar,
   color: #FFFFFF !important;
 }
 
+/* ITC Brand Title & Subtitle Theme Color Control */
+.itc-brand-title {
+  color: #000000 !important;
+}
+
+.crm-portal.light-theme :not(aside) .itc-brand-title {
+  color: #000000 !important;
+}
+
+.crm-portal:not(.light-theme) .itc-brand-title,
+.dark .itc-brand-title {
+  color: #FFFFFF !important;
+}
+
+/* Sidebar always gets PURE WHITE font in all themes */
+aside .itc-brand-title,
+aside.crm-sidebar .itc-brand-title,
+.crm-portal.light-theme aside .itc-brand-title,
+.crm-portal.light-theme aside.crm-sidebar .itc-brand-title,
+.crm-portal.light-theme aside * .itc-brand-title {
+  color: #FFFFFF !important;
+}
+
+.itc-brand-subtitle {
+  color: #475569 !important;
+}
+
+.crm-portal.light-theme :not(aside) .itc-brand-subtitle {
+  color: #475569 !important;
+}
+
+.crm-portal:not(.light-theme) .itc-brand-subtitle,
+.dark .itc-brand-subtitle {
+  color: #E2E8F0 !important;
+}
+
+aside .itc-brand-subtitle,
+aside.crm-sidebar .itc-brand-subtitle,
+.crm-portal.light-theme aside .itc-brand-subtitle,
+.crm-portal.light-theme aside.crm-sidebar .itc-brand-subtitle,
+.crm-portal.light-theme aside * .itc-brand-subtitle {
+  color: #E2E8F0 !important;
+}
+
 .crm-portal:not(.light-theme) aside.crm-sidebar,
 .crm-portal[data-theme='dark'] aside {
   --crm-sb-bg-from: #000000;
@@ -480,7 +524,7 @@ aside.crm-sidebar,
 .crm-portal:not(.light-theme) .text-zinc-400,
 .crm-portal:not(.light-theme) .text-zinc-500,
 .crm-portal:not(.light-theme) .text-zinc-600 {
-  color: #020203 !important;
+  color: #94A3B8 !important;
 }
 
 .crm-portal:not(.light-theme) th,
