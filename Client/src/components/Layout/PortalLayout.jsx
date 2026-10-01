@@ -177,39 +177,39 @@ export default function PortalLayout({ children }) {
           borderColor: effectiveTheme === 'light' ? '#E2E8F0' : '#01050bff'
         }}
       >
-        {/* MOBILE HEADER BAR (Clean Icon Buttons without Background Box) */}
-        <div className="flex md:hidden items-center justify-between w-full px-1 py-1.5 transition-colors duration-200">
-          {/* Left: Hamburger Button */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            className="inline-flex items-center justify-center p-1.5 text-slate-800 dark:text-slate-100 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
-            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-          >
-            <FiMenu size={20} className="text-slate-800 dark:text-slate-100" />
-          </button>
+        {/* MOBILE HEADER BAR (Clean Icon Buttons without Overflow) */}
+        <div className="flex md:hidden items-center justify-between w-full px-1.5 py-1.5 transition-colors duration-200 min-w-0 overflow-hidden">
+          {/* Left: Hamburger Button + Brand Title */}
+          <div className="flex items-center gap-1 min-w-0 shrink">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="inline-flex items-center justify-center p-1 text-slate-800 dark:text-slate-100 hover:opacity-80 transition cursor-pointer bg-transparent border-0 shrink-0"
+              aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+            >
+              <FiMenu size={15} className="text-slate-800 dark:text-slate-100" />
+            </button>
 
-          {/* Center: INDIA TRADE CENTER text */}
-          <div className="flex items-center justify-center text-center px-1 shrink-0">
             <span
-              className="font-serif font-black uppercase text-[11px] sm:text-[14px] tracking-wide whitespace-nowrap itc-brand-title"
+              className="font-serif font-black uppercase text-[8px] min-[360px]:text-[11px] tracking-tight truncate itc-brand-title max-w-[90px] min-[360px]:max-w-[130px] min-[420px]:max-w-[170px]"
               style={{ fontFamily: "'Newsreader', Georgia, 'Times New Roman', serif", fontWeight: 900 }}
+              title="INDIA TRADE CENTER"
             >
               INDIA TRADE CENTER
             </span>
           </div>
 
           {/* Right: Actions [IN/OUT Badge] [Theme] [Bell] [Alert] */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 min-[360px]:gap-1.5 shrink-0">
             {/* Mobile Check-In / Lunch / Check-Out Button (Compact [IN] / [OUT] Badge matching Reference) */}
             {user && (
-              <div className="flex items-center shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {(!todayAttendance || (!todayAttendance.checkInTime && !todayAttendance.checkInAt)) && (
                   <button
                     type="button"
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="px-2 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                    className="px-1.5 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                     title="Click to Check In"
                   >
                     {loadingAttendance ? '...' : 'IN'}
@@ -217,16 +217,16 @@ export default function PortalLayout({ children }) {
                 )}
 
                 {todayAttendance && (todayAttendance.checkInTime || todayAttendance.checkInAt) && (!todayAttendance.checkOutTime && !todayAttendance.checkOutAt) && (
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     {!todayAttendance.lunchStartAt && (
                       <button
                         type="button"
                         onClick={handleLunchStart}
                         disabled={loadingAttendance}
-                        className="px-1.5 py-0.5 rounded border border-amber-500/80 text-amber-600 dark:text-amber-400 font-bold text-[10px] tracking-wider bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                        className="px-1 py-0.5 rounded border border-amber-500/80 text-amber-600 dark:text-amber-400 font-bold text-[9px] tracking-wider bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                         title="Start Lunch Break"
                       >
-                        ☕ LUNCH
+                        ☕
                       </button>
                     )}
 
@@ -235,7 +235,7 @@ export default function PortalLayout({ children }) {
                         type="button"
                         onClick={handleLunchEnd}
                         disabled={loadingAttendance}
-                        className="px-1.5 py-0.5 rounded border border-amber-500/80 text-amber-500 font-mono font-bold text-[10px] bg-amber-500/20 animate-pulse active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                        className="px-1 py-0.5 rounded border border-amber-500/80 text-amber-500 font-mono font-bold text-[8px] bg-amber-500/20 animate-pulse active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                         title="End Lunch Break"
                       >
                         ☕ {formatElapsed(lunchElapsed)}
@@ -246,7 +246,7 @@ export default function PortalLayout({ children }) {
                       type="button"
                       onClick={handleCheckOut}
                       disabled={loadingAttendance}
-                      className="px-2 py-0.5 rounded border border-rose-500/80 text-rose-600 dark:text-rose-400 font-bold text-[11px] tracking-wider bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                      className="px-1.5 py-0.5 rounded border border-rose-500/80 text-rose-600 dark:text-rose-400 font-bold text-[8px] tracking-wider bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                       title="Click to Check Out"
                     >
                       OUT
@@ -259,7 +259,7 @@ export default function PortalLayout({ children }) {
                     type="button"
                     onClick={handleCheckIn}
                     disabled={loadingAttendance}
-                    className="px-2 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                    className="px-1.5 py-0.5 rounded border border-emerald-500/80 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                     title="Click to Check In again"
                   >
                     {loadingAttendance ? '...' : 'IN'}
@@ -272,10 +272,10 @@ export default function PortalLayout({ children }) {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex items-center justify-center p-1 text-slate-700 dark:text-slate-200 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
+              className="inline-flex items-center justify-center p-0.5 text-slate-700 dark:text-slate-200 hover:opacity-80 transition cursor-pointer bg-transparent border-0 shrink-0"
               aria-label="Toggle Theme"
             >
-              {effectiveTheme === 'light' ? <FiMoon size={18} className="text-slate-700 dark:text-slate-200" /> : <FiSun size={18} className="text-amber-400" />}
+              {effectiveTheme === 'light' ? <FiMoon size={15} className="text-slate-700 dark:text-slate-200" /> : <FiSun size={15} className="text-amber-400" />}
             </button>
 
             {/* Notification Dropdown */}
@@ -284,10 +284,10 @@ export default function PortalLayout({ children }) {
             {/* Alert Icon Button */}
             <button
               type="button"
-              className="inline-flex items-center justify-center p-1 text-[#FF4D4F] dark:text-rose-400 hover:opacity-80 transition cursor-pointer bg-transparent border-0"
+              className="inline-flex items-center justify-center p-0.5 text-[#FF4D4F] dark:text-rose-400 hover:opacity-80 transition cursor-pointer bg-transparent border-0 shrink-0"
               title="Alerts"
             >
-              <FiAlertCircle size={18} className="text-[#FF4D4F] dark:text-rose-400" />
+              <FiAlertCircle size={15} className="text-[#FF4D4F] dark:text-rose-400" />
             </button>
           </div>
         </div>
@@ -368,7 +368,7 @@ export default function PortalLayout({ children }) {
               title="Toggle Theme"
               aria-label="Toggle Theme"
             >
-              {effectiveTheme === 'light' ? <FiMoon size={16} /> : <FiSun size={16} />}
+              {effectiveTheme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}
             </button>
 
             {/* Notifications Dropdown */}

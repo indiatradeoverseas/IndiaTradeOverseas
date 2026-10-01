@@ -8,7 +8,7 @@ import {
   FiDollarSign, FiNavigation, FiMic, FiVolume2, FiAlertTriangle, FiCompass,
   FiTrendingUp, FiTrendingDown, FiPieChart, FiUsers, FiPhone, FiCalendar,
   FiX, FiExternalLink, FiMaximize2, FiBriefcase, FiTool, FiSliders, FiShare2, FiActivity,
-  FiCreditCard, FiFolder, FiFile, FiCheck, FiBarChart2, FiLifeBuoy
+  FiCreditCard, FiFolder, FiFile, FiCheck, FiBarChart2, FiLifeBuoy, FiBell
 } from 'react-icons/fi';
 import {
   ResponsiveContainer,
@@ -35,6 +35,8 @@ import { useAuth } from '../../../hooks/useAuth';
 import { socketService } from '../../../services/socket';
 import OrderMapModal from '../../../components/transport/map';
 import FileSharingWidget from '../../../components/crm/FileSharingWidget';
+import TransportLeadsSection from '../../../components/crm/TransportLeadsSection';
+import { transportLeadsApi } from '../../../api/transportLeads';
 
 // HR Manager Design System Tokens
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
@@ -81,6 +83,7 @@ export default function TransportManager() {
   const [metrics, setMetrics] = useState({
     totalDispatch: 0,
     totalRevenue: 0,
+    deliveredRevenue: 0,
     collectedToday: 0,
     totalLeads: 0,
     pendingLeads: 0,
@@ -304,12 +307,13 @@ export default function TransportManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tripsRes, queueRes, empRes, workUpdatesRes, leavesRes] = await Promise.allSettled([
+      const [tripsRes, queueRes, empRes, workUpdatesRes, leavesRes, transportLeadsRes] = await Promise.allSettled([
         dispatchesApi.getDispatches(),
         dispatchesApi.getDispatchQueue(),
         employeeSignupApi.getAllEmployees(),
         dispatchesApi.getWorkUpdates(),
-        leaveApi.getLeaves({ department: 'TRANSPORT' })
+        leaveApi.getLeaves({ department: 'TRANSPORT' }),
+        transportLeadsApi.getTransportLeads()
       ]);
 
       if (leavesRes.status === 'fulfilled') {
@@ -324,6 +328,12 @@ export default function TransportManager() {
       }
 
       setTrips(fetchedTrips);
+
+      let fetchedTransportLeads = [];
+      if (transportLeadsRes.status === 'fulfilled') {
+        const val = transportLeadsRes.value;
+        fetchedTransportLeads = val?.data?.leads || val?.leads || (Array.isArray(val) ? val : []);
+      }
 
       // Extract MongoDB Database fuel logs from backend dispatches
       const dbFuelLogs = [];
@@ -362,7 +372,29 @@ export default function TransportManager() {
         fetchedQueue = val?.data?.orders || val?.orders || val?.data?.leads || val?.leads || (Array.isArray(val) ? val : []);
       }
 
-      setDispatchQueue(fetchedQueue);
+      // Format transport leads to align with queue format if needed
+      const normalizedTransportLeads = fetchedTransportLeads.map(l => ({
+        ...l,
+        orderNumber: l.serialNumber || l.leadCode || `TRP-${l._id?.slice(-4)}`,
+        customerName: l.customerName || l.companyName || 'Client Lead',
+        origin: l.pickupLocation || 'Depot Hub',
+        destination: l.dropLocation || 'Destination',
+        material: l.goodsType || 'Cargo Goods',
+        weightTons: l.estimatedDistanceKm ? `${l.estimatedDistanceKm} KM` : '20',
+        freightAmount: l.totalAmount || 0,
+        totalFreightAmount: l.totalAmount || 0,
+        stage: l.status === 'DELIVERED' ? 'COMPLETED' : (l.status === 'ASSIGNED' || l.status === 'IN_TRANSIT' ? 'IN TRANSIT' : 'NEW')
+      }));
+
+      // Merge queue with manager uploaded transport leads ensuring no duplicates
+      const mergedQueue = [...fetchedQueue];
+      normalizedTransportLeads.forEach(tl => {
+        if (!mergedQueue.some(q => q._id === tl._id || q.orderNumber === tl.orderNumber)) {
+          mergedQueue.push(tl);
+        }
+      });
+
+      setDispatchQueue(mergedQueue);
 
       // Load Driver Work Updates & Fuel Stop logs from MongoDB
       if (workUpdatesRes.status === 'fulfilled') {
@@ -484,13 +516,30 @@ export default function TransportManager() {
         setDriverScorecards(scorecards);
       }
 
-      // Compute Real-Time Dynamic Metrics
-      const combinedAll = [...fetchedTrips, ...fetchedQueue];
+      // Compute Real-Time Dynamic Metrics including manager uploaded leads
+      const combinedAll = [];
+      const seenIds = new Set();
+      [...fetchedTrips, ...mergedQueue].forEach(t => {
+        if (!t) return;
+        const key = t._id || t.orderNumber || t.dispatchNumber || t.serialNumber;
+        if (key && !seenIds.has(key)) {
+          seenIds.add(key);
+          combinedAll.push(t);
+        }
+      });
 
       const totalFreightRev = combinedAll.reduce((sum, t) => {
         const amt = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.totalAmount || (t.weightTons ? Number(t.weightTons) * 750 : 0)) || 0;
         return sum + amt;
       }, 0);
+
+      // Delivered Revenue Total (Revenue specifically for delivered/completed dispatches & leads)
+      const deliveredRev = combinedAll
+        .filter(t => isCompletedLead(t) || (t.status || '').toUpperCase() === 'DELIVERED')
+        .reduce((sum, t) => {
+          const amt = Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.freightRate || t.amountCollected || t.totalAmount || 0) || 0;
+          return sum + amt;
+        }, 0);
 
       const isTodayDate = (dateVal) => {
         if (!dateVal) return false;
@@ -505,7 +554,7 @@ export default function TransportManager() {
           return isTodayDate(itemDate);
         })
         .reduce((sum, t) => {
-          return sum + (Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || 0) || 0);
+          return sum + (Number(t.totalFreightAmount || t.grossFreight || t.freightAmount || t.totalAmount || 0) || 0);
         }, 0);
 
       // Total Delivery Done: Count all completed/delivered leads accurately
@@ -519,11 +568,12 @@ export default function TransportManager() {
         )
       ).length;
 
-      const pendingUnassignedLeads = fetchedQueue.filter(lead => !isCompletedLead(lead));
+      const pendingUnassignedLeads = mergedQueue.filter(lead => !isCompletedLead(lead));
 
       setMetrics({
         totalDispatch: combinedAll.length,
         totalRevenue: totalFreightRev,
+        deliveredRevenue: deliveredRev,
         collectedToday: todayRev,
         totalLeads: combinedAll.length,
         pendingLeads: pendingUnassignedLeads.length,
@@ -790,30 +840,48 @@ export default function TransportManager() {
 
     setSubmittingAssign(true);
     try {
-      await leadsApi.assignLead(leadId, { assignedTo: targetUserId });
       const assignedEmp = allEmployeesList.find(emp => String(emp._id) === String(targetUserId)) || driversList.find(d => String(d._id) === String(targetUserId));
       const empName = assignedEmp?.fullName || assignedEmp?.name || 'Driver';
 
+      // Smart API Routing: Try Transport Lead API first, fallback to Sales CRM Lead API
+      let assignedViaTransport = false;
+      try {
+        if (transportLeadsApi && transportLeadsApi.assignMultipleDrivers) {
+          const tRes = await transportLeadsApi.assignMultipleDrivers(leadId, [{
+            driverId: targetUserId,
+            driverName: empName,
+            phone: assignedEmp?.phone || assignedEmp?.mobile || ''
+          }]);
+          if (tRes && tRes.success) assignedViaTransport = true;
+        }
+      } catch (_tErr) {
+        // Not a Transport Lead — will try CRM API below
+      }
+
+      if (!assignedViaTransport) {
+        await leadsApi.assignLead(leadId, { assignedTo: targetUserId });
+      }
+
       const targetLeadObj = [...dispatchQueue, ...trips].find(l => l._id === leadId || l.orderNumber === leadId || l.dispatchNumber === leadId) || {};
 
-      // Attempt to register/update dispatch with driver information
+      // Attempt to register/update dispatch with driver information (silently — never blocks assign)
       try {
         if (dispatchesApi.createDispatch) {
-          await dispatchesApi.createDispatch({
+          dispatchesApi.createDispatch({
             orderNumber: targetLeadObj.orderNumber || targetLeadObj.dispatchNumber || leadId,
             customerName: targetLeadObj.customerName || 'Confirmed Client',
-            origin: targetLeadObj.origin || 'Depot',
-            destination: targetLeadObj.destination || 'Destination',
-            material: targetLeadObj.material || 'Goods',
-            freightRate: Number(targetLeadObj.totalFreightAmount || targetLeadObj.freightAmount || 0),
-            truckNo: targetLeadObj.vehicleNo || 'Carrier',
+            origin: targetLeadObj.origin || targetLeadObj.pickupLocation || 'Depot',
+            destination: targetLeadObj.destination || targetLeadObj.dropLocation || 'Destination',
+            material: targetLeadObj.material || targetLeadObj.goodsType || 'Goods',
+            freightRate: Number(targetLeadObj.totalFreightAmount || targetLeadObj.freightAmount || targetLeadObj.totalAmount || 0),
+            truckNo: targetLeadObj.vehicleNo || targetLeadObj.vehicleType || 'Carrier',
             driverName: empName,
             driverId: targetUserId,
             assignedDriverId: targetUserId,
             assignedTo: targetUserId
           }).catch(() => { });
         }
-      } catch (err) { }
+      } catch (_dErr) { }
 
       // Update local states
       setDispatchQueue(prev => prev.map(l => (l._id === leadId || l.orderNumber === leadId) ? { ...l, assignedTo: assignedEmp, driverId: targetUserId, assignedDriverId: targetUserId, driverName: empName, salesOwner: empName } : l));
@@ -1203,8 +1271,9 @@ export default function TransportManager() {
             className="text-[10px] border px-3 py-1.5 uppercase tracking-wide rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 font-sans"
             style={{ borderColor: 'rgba(20, 184, 166, 0.4)', background: 'rgba(20, 184, 166, 0.15)', color: '#2dd4bf' }}
           >
-            <FiMessageSquare size={13} /> Executive & Founder Chat
+            <FiMessageSquare size={13} />Manager Chat
           </Link>
+
 
           <button
             onClick={() => setActiveTab(activeTab === 'SHARED_FILES' ? 'DASHBOARD' : 'SHARED_FILES')}
@@ -1216,6 +1285,49 @@ export default function TransportManager() {
           </button>
         </div>
       </div>
+
+      {/* Sub-Navigation Tabs Bar */}
+      <div className="flex items-center gap-2 border-b border-[var(--crm-line)] pb-3 font-sans overflow-x-auto scrollbar-none">
+        <button
+          onClick={() => setActiveTab('DASHBOARD')}
+          className={`px-3.5 sm:px-4 py-2 text-xs uppercase font-extrabold tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === 'DASHBOARD'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+          }`}
+        >
+          <FiBarChart2 size={14} /> Fleet Overview & Analytics
+        </button>
+
+        <button
+          onClick={() => setActiveTab('TRANSPORT_LEADS')}
+          className={`px-3.5 sm:px-4 py-2 text-xs uppercase font-extrabold tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === 'TRANSPORT_LEADS'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-indigo-400 hover:bg-[var(--crm-bg-raised)]'
+          }`}
+        >
+          <FiTruck size={14} /> Transport Leads & Bulk Upload Desk
+        </button>
+
+        <button
+          onClick={() => setActiveTab('SHARED_FILES')}
+          className={`px-3.5 sm:px-4 py-2 text-xs uppercase font-extrabold tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === 'SHARED_FILES'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)]'
+          }`}
+        >
+          <FiFolder size={14} /> Shared Files
+        </button>
+      </div>
+
+      {/* TRANSPORT LEADS TAB VIEW */}
+      {activeTab === 'TRANSPORT_LEADS' && (
+        <div className="space-y-4 font-sans">
+          <TransportLeadsSection driversList={driversList} onLeadCreated={fetchData} />
+        </div>
+      )}
 
       {/* SHARED FILES TAB VIEW */}
       {activeTab === 'SHARED_FILES' && (
@@ -1245,59 +1357,59 @@ export default function TransportManager() {
           )}
 
           {/* 6 TOP STAT CARDS ROW */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-sans">
-            <div className="p-4 border border-t-4 border-t-blue-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider" style={LABEL_MONO}>Total Dispatch</span>
-                <span className="p-2 rounded-lg bg-blue-50 text-blue-600"><FiTruck size={16} /></span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 font-sans">
+            <div className="p-3 sm:p-4 border border-t-4 border-t-blue-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate" style={LABEL_MONO}>Total Dispatch</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-blue-50 text-blue-600 shrink-0"><FiTruck size={14} /></span>
               </div>
-              <span className="text-2xl font-bold mt-2 block font-mono text-[var(--crm-heading)]">{metrics.totalDispatch}</span>
-              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>{metrics.activeTripsOnRoad} On Road</span>
+              <span className="text-lg sm:text-xl lg:text-2xl font-bold mt-1.5 block font-mono text-[var(--crm-heading)] truncate">{metrics.totalDispatch}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 truncate" style={LABEL_MONO}>{metrics.activeTripsOnRoad} On Road</span>
             </div>
 
-            <div className="p-4 border border-t-4 border-t-emerald-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Total Revenue</span>
-                <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600"><FiDollarSign size={16} /></span>
+            <div className="p-3 sm:p-4 border border-t-4 border-t-emerald-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400 truncate">Total Revenue</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-emerald-50 text-emerald-600 shrink-0"><FiDollarSign size={14} /></span>
               </div>
-              <span className="text-2xl font-bold text-emerald-400 mt-2 block font-mono">₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
-              <span className="text-[10px] font-sans block mt-1 text-emerald-500/80">Today Earning: ₹{metrics.collectedToday.toLocaleString('en-IN')}</span>
+              <span className="text-base sm:text-xl lg:text-2xl font-bold text-emerald-400 mt-1.5 block font-mono truncate" title={`₹${metrics.totalRevenue.toLocaleString('en-IN')}`}>₹{metrics.totalRevenue.toLocaleString('en-IN')}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 text-emerald-300 font-semibold truncate" title={`Delivered Rev: ₹${(metrics.deliveredRevenue || 0).toLocaleString('en-IN')}`}>Delivered: ₹{(metrics.deliveredRevenue || 0).toLocaleString('en-IN')}</span>
             </div>
 
-            <div className="p-4 border border-t-4 border-t-sky-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">Total Delivery Done</span>
-                <span className="p-2 rounded-lg bg-sky-50 text-sky-600"><FiCheckCircle size={16} /></span>
+            <div className="p-3 sm:p-4 border border-t-4 border-t-sky-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-teal-400 truncate">Delivery Done</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-sky-50 text-sky-600 shrink-0"><FiCheckCircle size={14} /></span>
               </div>
-              <span className="text-2xl font-bold text-teal-400 mt-2 block font-mono">{metrics.completedTrips}</span>
-              <span className="text-[10px] font-sans block mt-1 text-teal-500/80">Verified PODs</span>
+              <span className="text-lg sm:text-xl lg:text-2xl font-bold text-teal-400 mt-1.5 block font-mono truncate">{metrics.completedTrips}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 text-teal-300 font-bold truncate" title={`Delivered Rev: ₹${(metrics.deliveredRevenue || 0).toLocaleString('en-IN')}`}>Delivered: ₹{(metrics.deliveredRevenue || 0).toLocaleString('en-IN')}</span>
             </div>
 
-            <div className="p-4 border border-t-4 border-t-amber-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">Lead</span>
-                <span className="p-2 rounded-lg bg-amber-50 text-amber-600"><FiBriefcase size={16} /></span>
+            <div className="p-3 sm:p-4 border border-t-4 border-t-amber-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 truncate">Lead</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-amber-50 text-amber-600 shrink-0"><FiBriefcase size={14} /></span>
               </div>
-              <span className="text-2xl font-bold text-amber-400 mt-2 block font-mono">{metrics.totalLeads}</span>
-              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Freight Orders</span>
+              <span className="text-lg sm:text-xl lg:text-2xl font-bold text-amber-400 mt-1.5 block font-mono truncate">{metrics.totalLeads}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 truncate" style={LABEL_MONO}>Freight Orders</span>
             </div>
 
-            <div className="p-4 border border-t-4 border-t-purple-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">Pending Lead</span>
-                <span className="p-2 rounded-lg bg-purple-50 text-purple-600"><FiClock size={16} /></span>
+            <div className="p-3 sm:p-4 border border-t-4 border-t-purple-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-purple-400 truncate">Pending Lead</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-purple-50 text-purple-600 shrink-0"><FiClock size={14} /></span>
               </div>
-              <span className="text-2xl font-bold text-purple-300 mt-2 block font-mono">{metrics.pendingLeads}</span>
-              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Unassigned Queue</span>
+              <span className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-300 mt-1.5 block font-mono truncate">{metrics.pendingLeads}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 truncate" style={LABEL_MONO}>Unassigned Queue</span>
             </div>
 
-            <div className="p-4 border border-t-4 border-t-blue-500 rounded-xl" style={CARD}>
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">Num of Drivers</span>
-                <span className="p-2 rounded-lg bg-blue-50 text-blue-600"><FiUsers size={16} /></span>
+            <div className="p-3 sm:p-4 border border-t-4 border-t-blue-500 rounded-xl min-w-0 overflow-hidden flex flex-col justify-between" style={CARD}>
+              <div className="flex items-start justify-between gap-1 min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-sky-400 truncate">Num of Drivers</span>
+                <span className="p-1.5 sm:p-2 rounded-lg bg-blue-50 text-blue-600 shrink-0"><FiUsers size={14} /></span>
               </div>
-              <span className="text-2xl font-bold text-sky-400 mt-2 block font-mono">{metrics.numDrivers}</span>
-              <span className="text-[10px] font-sans block mt-1" style={LABEL_MONO}>Active Captains</span>
+              <span className="text-lg sm:text-xl lg:text-2xl font-bold text-sky-400 mt-1.5 block font-mono truncate">{metrics.numDrivers}</span>
+              <span className="text-[9px] sm:text-[10px] font-sans block mt-1 truncate" style={LABEL_MONO}>Active Captains</span>
             </div>
           </div>
 

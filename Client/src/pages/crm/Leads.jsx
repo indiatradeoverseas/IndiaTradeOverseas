@@ -3688,7 +3688,7 @@ Valuation: ₹2,50,000`}
             animate={{ y: 0, x: '-50%', opacity: 1 }}
             exit={{ y: 80, x: '-50%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] max-w-xl bg-slate-950/90 border border-teal-500/30 backdrop-blur-md p-4 rounded-sm shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-left"
+            className="fixed bottom-16 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[92%] max-w-xl bg-slate-950/95 border border-teal-500/40 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl shadow-2xl shadow-teal-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 font-mono text-xs text-left overflow-hidden"
           >
             <div className="flex items-center gap-3">
               <span className="bg-teal-950/50 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-sm font-bold">

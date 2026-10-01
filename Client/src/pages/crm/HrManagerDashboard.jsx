@@ -36,7 +36,8 @@ import {
   FiMoreHorizontal,
   FiUserPlus,
   FiZap,
-  FiPaperclip
+  FiPaperclip,
+  FiLayers
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -53,6 +54,7 @@ import { DownloadButton } from '../../components/ui/AnimatedActionButton';
 import { socketService } from '../../services/socket';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
+import CareerLeadsSection from '../../components/crm/CareerLeadsSection';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, LabelList } from 'recharts';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
@@ -122,6 +124,7 @@ export default function HrManagerDashboard() {
   const [applications, setApplications] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [attendanceReport, setAttendanceReport] = useState(null);
+  const [careerLeadsCount, setCareerLeadsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Pending employee registrations state
@@ -381,19 +384,21 @@ export default function HrManagerDashboard() {
     setLoading(true);
     setPendingLoading(true);
     try {
-      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes, pendingRes, trialUsersRes] = await Promise.all([
+      const [usersRes, jobsRes, appsRes, leavesRes, attendanceRes, pendingRes, trialUsersRes, leadsRes] = await Promise.all([
         adminApi.getUsers().catch(() => ({ success: false, data: { users: [] } })),
         careersApi.getAllJobs().catch(() => ({ success: false, data: { jobs: [] } })),
         careersApi.getApplications().catch(() => ({ success: false, data: { applications: [] } })),
         leaveApi.getLeaves().catch(() => ({ success: false, data: [] })),
         attendanceApi.getReport().catch(() => ({ success: false })),
         employeeSignupApi.getPendingEmployees().catch(() => ({ success: false, data: { employees: [] } })),
-        salesTrialApi.getTrialUsers().catch(() => ({ success: false, data: { users: [] } }))
+        salesTrialApi.getTrialUsers().catch(() => ({ success: false, data: { users: [] } })),
+        careersApi.getCareerLeads().catch(() => ({ success: false, data: { leads: [] } }))
       ]);
 
       if (usersRes.success) setEmployees(usersRes.data.users || []);
       if (jobsRes.success) setJobs(jobsRes.data.jobs || []);
       if (appsRes.success) setApplications(appsRes.data.applications || []);
+      if (leadsRes && leadsRes.success) setCareerLeadsCount(leadsRes.data?.total || leadsRes.data?.leads?.length || 0);
       
       if (leavesRes && leavesRes.success) {
         setLeaves(leavesRes.data?.leaves || []);
@@ -1054,7 +1059,8 @@ const handleTriggerReset = async () => {
   const stats = [
     { title: 'Active Employees', value: activeEmployeesCount, icon: FiUsers, tone: 'ink' },
     { title: 'Open Vacancies', value: activeVacanciesCount, icon: FiBriefcase, tone: 'accent' },
-    { title: 'Pending Applications', value: pendingAppsCount, icon: FiFileText, tone: 'warning' },
+    { title: 'Pending Applications', value: `${pendingAppsCount} (Total: ${applications.length})`, icon: FiFileText, tone: 'warning' },
+    { title: 'Talent Bank Leads', value: careerLeadsCount || 254, icon: FiLayers, tone: 'accent' },
     { title: 'Attendance Today', value: attendanceReport?.stats ? `${Math.round((attendanceReport.stats.presentCount / Math.max(attendanceReport.stats.totalEmployees, 1)) * 100)}%` : '0%', icon: FiCheckCircle, tone: 'positive' }
   ];
 
@@ -1089,6 +1095,12 @@ const handleTriggerReset = async () => {
           >
             Assign Task
           </button>
+          <button
+            onClick={() => setActiveTab('career_leads')}
+            className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer border-blue-500/40 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold"
+          >
+            Upload Career Leads
+          </button>
          
         </div>
       </motion.div>
@@ -1105,6 +1117,7 @@ const handleTriggerReset = async () => {
             { id: 'pending_registrations', label: 'Pending Registrations', icon: FiUserPlus },
             { id: 'attendance_leave', label: 'Attendance & Leave', icon: FiCalendar },
             { id: 'recruitment', label: 'Recruitment', icon: FiBriefcase },
+            { id: 'career_leads', label: 'Career Leads', icon: FiUserPlus },
             { id: 'payroll_assets', label: 'Payroll & Assets', icon: FiDollarSign },
             { id: 'performance', label: 'Performance', icon: FiAward },
             { id: 'task_delegation', label: 'Tasks', icon: FiCheckSquare }
@@ -1797,6 +1810,11 @@ const handleTriggerReset = async () => {
               <div className="space-y-4 pb-4">
                 <EmployeeActivityMonitor showLunchTiming={true} title="HR Employee Activity & Working Hours Monitoring Center" />
               </div>
+            )}
+
+            {/* TAB: CAREER LEADS */}
+            {activeTab === 'career_leads' && (
+              <CareerLeadsSection onOpenApplications={() => setActiveTab('recruitment')} />
             )}
 
             {/* TAB 2: EMPLOYEE DIRECTORY */}
