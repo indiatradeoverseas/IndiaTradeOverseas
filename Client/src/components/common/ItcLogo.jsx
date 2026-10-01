@@ -94,7 +94,7 @@ export default function ItcLogo({
               fontWeight: 900
             }}
           >
-            INDIA TRADE CENTRE
+            INDIA TRADE CENTER
           </span>
 
           <span
