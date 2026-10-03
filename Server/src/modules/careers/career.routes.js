@@ -56,6 +56,23 @@ const uploadToMemory = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+const {
+  uploadSingleCareerLead,
+  bulkUploadCareerLeads,
+  getCareerLeads,
+  updateCareerLeadStatus: updateCareerLeadStatusHandler,
+  deleteCareerLead: deleteCareerLeadHandler,
+  getHRExecutives: getHRExecutivesHandler,
+  assignCareerLead: assignCareerLeadHandler,
+  bulkAssignCareerLeads: bulkAssignCareerLeadsHandler
+} = require('./careerLeadUpload.controller');
+
+const {
+  createAuditLog,
+  getAuditLogsForLead,
+  getPassedLeadsForHRManager
+} = require('./careerLeadAudit.controller');
+
 // ----------------------------------------------------
 // Public Endpoints
 // ----------------------------------------------------
@@ -70,7 +87,20 @@ router.get('/jobs/:id/jd', downloadJobJD);
 // ----------------------------------------------------
 // Authenticated Endpoints
 // ----------------------------------------------------
+router.get('/audit-logs/candidate', authenticate, getAuditLogsForLead);
+router.get('/audit-logs/hr-manager-passed', authenticate, getPassedLeadsForHRManager);
+router.post('/audit-logs', authenticate, createAuditLog);
+
 router.get('/gate-leads', authenticate, listGateLeads);
+router.get('/leads/hr-executives', authenticate, getHRExecutivesHandler);
+router.get('/leads', authenticate, getCareerLeads);
+router.post('/leads/upload', authenticate, uploadSingleCareerLead);
+router.post('/leads/bulk-upload', authenticate, bulkUploadCareerLeads);
+router.post('/leads/bulk-assign', authenticate, bulkAssignCareerLeadsHandler);
+router.patch('/leads/:id/status', authenticate, updateCareerLeadStatusHandler);
+router.patch('/leads/:id/assign', authenticate, assignCareerLeadHandler);
+router.delete('/leads/:id', authenticate, deleteCareerLeadHandler);
+
 router.get('/', authenticate, listApplications);
 router.post('/bulk-assign', authenticate, bulkAssignApplications);
 router.patch('/:id/status', authenticate, updateApplicationStatus);

@@ -46,6 +46,7 @@ const blockVariants = {
 };
 
 const LEAD_FIELDS = [
+  { value: 'identifier', label: 'Identifier / Ref No' },
   { value: 'customerName', label: 'Consignee Name *' },
   { value: 'phone', label: 'Phone Number *' },
   { value: 'whatsAppNumber', label: 'WhatsApp Number' },
@@ -821,7 +822,7 @@ export default function Leads() {
     if (isManagerOrAdmin) {
       fetchExecutives();
     }
-  }, [filterStage, user, isManagerOrAdmin]);
+  }, [filterStage, user?._id, isManagerOrAdmin]);
 
   const fetchLeads = async () => {
     try {
@@ -1090,7 +1091,9 @@ export default function Leads() {
     const mappings = {};
     firstRow.forEach((val, colIdx) => {
       const cleanVal = val.toLowerCase().trim();
-      if (cleanVal.includes('whatsapp') || cleanVal === 'wa') {
+      if (cleanVal.includes('identifier') || cleanVal.includes('ref') || cleanVal.includes('leadcode') || cleanVal.includes('lead code') || cleanVal.includes('sl no') || cleanVal === 'sl' || cleanVal === 'no' || cleanVal === 'sr no') {
+        mappings[colIdx] = 'identifier';
+      } else if (cleanVal.includes('whatsapp') || cleanVal === 'wa') {
         mappings[colIdx] = 'whatsAppNumber';
       } else if (cleanVal.includes('company') || cleanVal.includes('enterprise')) {
         mappings[colIdx] = 'companyName';
@@ -1915,7 +1918,7 @@ export default function Leads() {
             onClick={() => setShowSalesCalc(true)}
             className="bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 font-bold text-[10px] uppercase tracking-wider h-[30px] px-2.5 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm"
           >
-            <BsCalculator size={12} /> <span>Sales Calculator 🧮</span>
+            <BsCalculator size={12} /> <span>Sales Calculator</span>
           </button>
 
           <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold h-[30px] px-3 rounded-sm flex items-center space-x-1 transition-all cursor-pointer shadow-sm">
@@ -2655,12 +2658,12 @@ export default function Leads() {
                                 </span>
                               )}
                               {lead.lastCallOutcome && (
-                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase shadow-xs flex items-center gap-1 ${lead.lastCallOutcome === 'CONNECTED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
-                                    lead.lastCallOutcome === 'BUSY' ? 'bg-rose-950 text-rose-300 border border-rose-700' :
-                                      lead.lastCallOutcome === 'NO_ANSWER' ? 'bg-amber-950 text-amber-300 border border-amber-700' :
-                                        lead.lastCallOutcome === 'SWITCHED_OFF' ? 'bg-slate-900 text-slate-300 border border-slate-700' :
-                                          lead.lastCallOutcome === 'CALL_BACK' ? 'bg-sky-950 text-sky-300 border border-sky-700' :
-                                            'bg-purple-950 text-purple-300 border border-purple-700'
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase flex items-center gap-1 ${lead.lastCallOutcome === 'CONNECTED' ? 'text-emerald-600 dark:text-emerald-300 border border-emerald-500/40' :
+                                    lead.lastCallOutcome === 'BUSY' ? 'text-rose-600 dark:text-rose-300 border border-rose-500/40' :
+                                      lead.lastCallOutcome === 'NO_ANSWER' ? 'text-amber-600 dark:text-amber-300 border border-amber-500/40' :
+                                        lead.lastCallOutcome === 'SWITCHED_OFF' ? 'text-slate-600 dark:text-slate-300 border border-slate-500/40' :
+                                          lead.lastCallOutcome === 'CALL_BACK' ? 'text-sky-600 dark:text-sky-300 border border-sky-500/40' :
+                                            'text-purple-600 dark:text-purple-300 border border-purple-500/40'
                                   }`}>
                                   📞 {lead.lastCallOutcome === 'CONNECTED' ? 'Connected' :
                                     lead.lastCallOutcome === 'BUSY' ? 'Busy' :
@@ -2673,7 +2676,7 @@ export default function Leads() {
                             <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.companyName || 'Private Enterprise'}</div>
                           </td>
                           <td className="py-3.5 px-5">
-                            <span className="px-2.5 py-1 text-[9px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md border border-slate-300 dark:border-slate-700 shadow-xs mr-2">
+                            <span className="px-2.5 py-1 text-[9px] font-mono font-bold text-[var(--crm-heading)] border border-[var(--crm-ink-soft)]/25 rounded-md shadow-xs mr-2">
                               {lead.productCategory}
                             </span>
                             <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">{lead.destination || lead.location || lead.country || 'India'}</span>
@@ -2721,7 +2724,7 @@ export default function Leads() {
                               {/* LOI Section */}
                               {lead.loiDocuments && lead.loiDocuments.length > 0 ? (
                                 <div className="space-y-1 text-center">
-                                  <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
+                                  <span className="text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 text-[8px] px-2 py-0.5 rounded font-bold uppercase inline-block">
                                     ✓ LOI ({lead.loiDocuments.length})
                                   </span>
                                   {lead.loiDocuments.map((loi, i) => (
@@ -2730,7 +2733,7 @@ export default function Leads() {
                                       href={`${API_URL}/leads/${lead._id}/loi/${i}?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="block text-[9px] text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
+                                      className="block text-[9px] text-teal-600 dark:text-teal-400 hover:underline truncate max-w-[100px] mx-auto"
                                       title={loi.originalName}
                                     >
                                       📄 {loi.originalName}
@@ -2742,7 +2745,7 @@ export default function Leads() {
                                       setLoiTargetLeadId(lead._id);
                                       setShowLOIModal(true);
                                     }}
-                                    className="text-[8px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto"
+                                    className="text-[8px] uppercase font-bold text-teal-600 dark:text-teal-400 hover:text-teal-500 border border-teal-500/40 px-1.5 py-0.5 rounded cursor-pointer transition block mx-auto hover:bg-teal-500/10"
                                   >
                                     + Add LOI
                                   </button>
@@ -2754,7 +2757,7 @@ export default function Leads() {
                                     setLoiTargetLeadId(lead._id);
                                     setShowLOIModal(true);
                                   }}
-                                  className="text-[9px] uppercase font-bold text-teal-400 hover:text-teal-300 bg-teal-950/40 border border-teal-800/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1"
+                                  className="text-[9px] uppercase font-bold text-teal-600 dark:text-teal-400 hover:text-teal-500 border border-teal-500/40 px-2 py-1 rounded cursor-pointer transition shadow-sm inline-flex items-center gap-1 hover:bg-teal-500/10"
                                 >
                                   + LOI
                                 </button>
@@ -2767,7 +2770,7 @@ export default function Leads() {
                                     e.stopPropagation();
                                     openCallLogModal(lead);
                                   }}
-                                  className="p-1.5 bg-amber-950/80 border border-amber-800/60 text-amber-400 hover:bg-amber-900 hover:text-amber-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                  className="p-1.5 border border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                   title="Log Call Outcome & View Multi-Call History Timeline"
                                 >
                                   <FiPhoneCall size={13} />
@@ -2789,7 +2792,7 @@ export default function Leads() {
                                 {isManagerOrAdmin && (
                                   <button
                                     onClick={(e) => handleDeleteSingleLead(lead._id, e)}
-                                    className="p-1.5 bg-rose-950/80 border border-rose-800/60 text-rose-400 hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                    className="p-1.5 bg-red-950 border border-rose-800/60 text-white hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                     title="Delete Lead Node"
                                   >
                                     <FiTrash2 size={13} />
@@ -3688,7 +3691,7 @@ Valuation: ₹2,50,000`}
             animate={{ y: 0, x: '-50%', opacity: 1 }}
             exit={{ y: 80, x: '-50%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] max-w-xl bg-slate-950/90 border border-teal-500/30 backdrop-blur-md p-4 rounded-sm shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-left"
+            className="fixed bottom-16 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[92%] max-w-xl bg-slate-950/95 border border-teal-500/40 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl shadow-2xl shadow-teal-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 font-mono text-xs text-left overflow-hidden"
           >
             <div className="flex items-center gap-3">
               <span className="bg-teal-950/50 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-sm font-bold">

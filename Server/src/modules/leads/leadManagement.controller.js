@@ -1158,7 +1158,8 @@ async function createInternalLeadOpportunity({
         payload.repeatVisitCount,
     });
 
-  const leadCode = await generateFormattedLeadCode(payload);
+  const customId = cleanText(payload.leadCode || payload.identifier || payload.refNo || payload.Identifier || payload.RefNo, 100);
+  const leadCode = customId ? customId : (await generateFormattedLeadCode(payload));
 
   const lead =
     await Lead.create({

@@ -805,21 +805,22 @@ export default function Followup() {
       {/* ASSIGN TASK MODAL FOR MANAGER */}
       <AnimatePresence>
         {showTaskModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[200] p-3 sm:p-4 overflow-y-auto min-h-screen py-6 sm:py-10" onClick={() => setShowTaskModal(false)}>
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left my-auto max-h-[85vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
+              <div className="p-4 sm:p-5 flex justify-between items-center border-b border-[var(--crm-line)] shrink-0">
+                <h3 className="text-base sm:text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
                   <FiCheckSquare className="text-teal-400" size={18} /> Assign Task to Executive
                 </h3>
-                <button onClick={() => setShowTaskModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
+                <button onClick={() => setShowTaskModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer p-1 rounded hover:bg-white/10 transition">✕</button>
               </div>
 
-              <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
+              <form onSubmit={handleTaskSubmit} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4 text-xs font-medium custom-scrollbar">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Task Title *</label>
                   <input
@@ -848,7 +849,7 @@ export default function Followup() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Due Date *</label>
                     <input
@@ -893,7 +894,7 @@ export default function Followup() {
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
+                <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
                   <button
                     type="submit"
                     disabled={submittingTask}

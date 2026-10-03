@@ -333,12 +333,12 @@ export default function DriverCalculator({ defaultDriverName = '', defaultVehicl
             {/* Total Rupees Output */}
             <div className="flex-1 min-w-[130px]">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">
-                Total Rupess
+                Total Rupees
               </label>
-              <div className="w-full px-3.5 py-2.5 bg-emerald-700 dark:bg-emerald-950/80 border border-emerald-600 dark:border-emerald-800 text-white dark:text-emerald-300 font-black text-sm font-sans rounded-xl flex items-center justify-between shadow-xs">
+              <div className="w-full px-3.5 py-2 bg-transparent border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-black text-sm font-sans rounded-xl flex items-center justify-between">
                 <span>₹{(Number(totalRupees) || 0).toLocaleString('en-IN')}</span>
                 {numTrips > 1 && (
-                  <span className="text-[10px] text-emerald-100 dark:text-emerald-300/80 font-semibold">
+                  <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold">
                     ({numTrips} Trips)
                   </span>
                 )}

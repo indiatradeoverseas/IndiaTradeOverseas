@@ -33,6 +33,47 @@ export const careersApi = {
     return response.data;
   },
 
+  // Career Leads Upload & Management
+  getCareerLeads: async (params = {}) => {
+    const response = await axiosInstance.get('/careers/leads', { params });
+    return response.data;
+  },
+
+  uploadCareerLead: async (leadData) => {
+    const response = await axiosInstance.post('/careers/leads/upload', leadData);
+    return response.data;
+  },
+
+  bulkUploadCareerLeads: async (leads) => {
+    const response = await axiosInstance.post('/careers/leads/bulk-upload', { leads });
+    return response.data;
+  },
+
+  updateCareerLeadStatus: async (id, statusData) => {
+    const response = await axiosInstance.patch(`/careers/leads/${id}/status`, statusData);
+    return response.data;
+  },
+
+  getHRExecutives: async () => {
+    const response = await axiosInstance.get('/careers/leads/hr-executives');
+    return response.data;
+  },
+
+  assignCareerLead: async (id, assignedToId) => {
+    const response = await axiosInstance.patch(`/careers/leads/${id}/assign`, { assignedToId });
+    return response.data;
+  },
+
+  bulkAssignCareerLeads: async (leadIds, assignedToId) => {
+    const response = await axiosInstance.post('/careers/leads/bulk-assign', { leadIds, assignedToId });
+    return response.data;
+  },
+
+  deleteCareerLead: async (id) => {
+    const response = await axiosInstance.delete(`/careers/leads/${id}`);
+    return response.data;
+  },
+
   updateApplicationStatus: async (id, status, interviewDetails = null) => {
     const payload = { status };
     if (interviewDetails) {
@@ -124,6 +165,22 @@ export const careersApi = {
 
   deleteJob: async (id) => {
     const response = await axiosInstance.delete(`/careers/jobs/${id}`);
+    return response.data;
+  },
+
+  // Audit Logs Actions for Career Leads & Interviews
+  createAuditLog: async (auditData) => {
+    const response = await axiosInstance.post('/careers/audit-logs', auditData);
+    return response.data;
+  },
+
+  getCandidateAuditLogs: async (params = {}) => {
+    const response = await axiosInstance.get('/careers/audit-logs/candidate', { params });
+    return response.data;
+  },
+
+  getHRManagerPassedLeads: async () => {
+    const response = await axiosInstance.get('/careers/audit-logs/hr-manager-passed');
     return response.data;
   }
 };

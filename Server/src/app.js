@@ -85,6 +85,9 @@ const chatRoutes =
 const careerRoutes =
   require('./modules/careers/career.routes');
 
+const careerLeadUploadRoutes =
+  require('./modules/careers/careerLeadUpload.routes');
+
 const distributorRoutes =
   require('./modules/distributors/distributor.routes');
 
@@ -126,6 +129,9 @@ const employeeActivityRoutes =
 
 const hrWorkLogRoutes =
   require('./modules/hr/hrWorkLog.routes');
+
+const transportLeadRoutes =
+  require('./modules/transport/transportLead.routes');
 
 const app = express();
 
@@ -492,6 +498,11 @@ const apiRoutes = [
   },
 
   {
+    path: '/career-leads',
+    router: careerLeadUploadRoutes
+  },
+
+  {
     path: '/distributors',
     router: distributorRoutes
   },
@@ -574,6 +585,11 @@ const apiRoutes = [
   {
     path: '/hr/work-log',
     router: hrWorkLogRoutes
+  },
+
+  {
+    path: '/transport-leads',
+    router: transportLeadRoutes
   }
 ];
 

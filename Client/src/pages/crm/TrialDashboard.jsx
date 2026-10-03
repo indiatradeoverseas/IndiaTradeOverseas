@@ -698,52 +698,49 @@ export default function TrialDashboard() {
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="p-3 sm:p-6 space-y-6 max-w-7xl mx-auto w-full min-w-0 font-sans antialiased text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] pb-16">
 
       {/* Executive Portal Header Banner (Sales Executive Layout) */}
-      <motion.div variants={blockVariants} className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-lg shadow-sm text-left">
+      <motion.div variants={blockVariants} className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-4 sm:p-5 rounded-2xl shadow-sm text-left font-sans">
         <div className="space-y-1 flex-1 min-w-0 pr-2">
-          <span className="text-[10px] uppercase tracking-[0.25em] text-teal-400 font-bold block font-mono">COMMODITY TRADING PORTAL</span>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-normal text-[var(--crm-heading)] tracking-tight">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-teal-400 font-bold block font-sans">COMMODITY TRADING PORTAL</span>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[var(--crm-heading)] tracking-tight font-sans">
             {greeting}, {user?.fullName || user?.name || 'Sales Trial Executive'}
           </h1>
-          <p className="text-xs text-[var(--crm-ink-faint)] font-light mt-0.5">
-            Role: <strong className="text-[var(--crm-heading)] font-semibold font-mono">Sales Trial Executive (SALES_TRIAL) &bull; Node ID: {user?.trialId || user?.employeeId || 'TRL-NODE'}</strong> &bull; Node Status: <span className="text-emerald-400 font-semibold font-mono">Live</span>
+          <p className="text-xs text-[var(--crm-ink-faint)] font-medium mt-0.5 font-sans">
+            Role: <strong className="text-[var(--crm-heading)] font-semibold font-sans">Sales Trial Executive (SALES_TRIAL) &bull; Node ID: {user?.trialId || user?.employeeId || 'TRL-NODE'}</strong> &bull; Node Status: <span className="text-emerald-400 font-semibold font-sans">Live</span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-mono shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto self-stretch xl:self-auto font-sans shrink-0">
           <button
             onClick={() => setShowLOIModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 px-3.5 py-2.5 sm:py-2 text-[10px] sm:text-xs uppercase font-extrabold tracking-wider rounded-xl transition shadow-md shadow-emerald-600/30 cursor-pointer whitespace-nowrap"
           >
-            <FiFileText className="text-teal-400" size={12} /> Upload LOI Document
+            <FiFileText className="text-white" size={14} /> Upload LOI Document
           </button>
           <button
             onClick={() => setShowCallModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/40 px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 px-3.5 py-2.5 sm:py-2 text-[10px] sm:text-xs uppercase font-extrabold tracking-wider rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer whitespace-nowrap"
           >
-            <FiMic className="animate-pulse text-rose-400" size={12} /> Upload Call Recording
+            <FiMic className="animate-pulse text-white" size={14} /> Upload Call Recording
           </button>
           <button
             onClick={loadTrialDashboardData}
-            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] uppercase font-bold tracking-wider rounded transition shadow-sm cursor-pointer whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] border border-[var(--crm-line)] px-3 py-2 text-[10px] sm:text-xs uppercase font-bold tracking-wider rounded-xl transition shadow-sm cursor-pointer whitespace-nowrap font-sans"
           >
             <FiRotateCw className={`${loading ? 'animate-spin' : ''}`} size={12} /> Sync Data
           </button>
-          <div className="bg-[var(--crm-bg-sunken)] text-teal-400 border border-[var(--crm-line)] px-3 py-2 text-[10px] font-bold tracking-widest uppercase rounded flex items-center justify-center select-none shadow-sm whitespace-nowrap">
-            DESK MODE // ACTIVE
-          </div>
         </div>
       </motion.div>
 
       {/* Date & Calendar Filter Bar */}
-      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3 sm:p-4 rounded-lg shadow-sm font-mono text-xs flex flex-wrap justify-between items-center gap-3 text-left">
+      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-3.5 sm:p-4 rounded-2xl shadow-sm font-sans text-xs flex flex-wrap justify-between items-center gap-3 text-left">
         <div className="flex items-center gap-2 text-[var(--crm-heading)] font-bold">
           <FiCalendar className="text-teal-400 animate-pulse" size={16} />
-          <span className="text-[11px] uppercase tracking-wider">Date & Calendar Filter:</span>
+          <span className="text-xs uppercase tracking-wider font-sans">Date & Calendar Filter:</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
+            className={`px-3.5 py-1.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'ALL'
                 ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
@@ -752,7 +749,7 @@ export default function TrialDashboard() {
           </button>
           <button
             onClick={() => { setDateFilterMode('TODAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
+            className={`px-3.5 py-1.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'TODAY'
                 ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
@@ -761,7 +758,7 @@ export default function TrialDashboard() {
           </button>
           <button
             onClick={() => { setDateFilterMode('YESTERDAY'); setSelectedDate(''); }}
-            className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
+            className={`px-3.5 py-1.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all cursor-pointer ${dateFilterMode === 'YESTERDAY'
                 ? 'bg-[#2563eb] text-white font-extrabold shadow-md shadow-blue-500/30 border border-[#00c6ff]/40'
                 : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:bg-[var(--crm-bg-raised)] font-bold'
               }`}
@@ -769,8 +766,8 @@ export default function TrialDashboard() {
             Yesterday
           </button>
 
-          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2.5 py-1 rounded">
-            <span className="text-[9px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
+          <div className="flex items-center gap-1.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-3 py-1.5 rounded-xl font-sans">
+            <span className="text-[10px] uppercase text-[var(--crm-ink-faint)] font-bold">Pick Date:</span>
             <input
               type="date"
               value={selectedDate}
@@ -778,28 +775,28 @@ export default function TrialDashboard() {
                 setSelectedDate(e.target.value);
                 setDateFilterMode(e.target.value ? 'PICK_DATE' : 'ALL');
               }}
-              className="bg-transparent text-[var(--crm-heading)] text-[10px] outline-none font-mono cursor-pointer"
+              className="bg-transparent text-[var(--crm-heading)] text-xs outline-none font-sans cursor-pointer"
             />
           </div>
 
           {dateFilterMode !== 'ALL' && (
             <button
               onClick={() => { setDateFilterMode('ALL'); setSelectedDate(''); }}
-              className="text-[9px] uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer"
+              className="text-xs uppercase font-bold text-rose-400 hover:text-rose-300 underline ml-1 cursor-pointer font-sans"
             >
               Clear Filter
             </button>
           )}
         </div>
 
-        <div className="text-[10px] text-[var(--crm-ink-faint)] font-mono">
+        <div className="text-xs text-[var(--crm-ink-faint)] font-sans">
           Showing: <strong className="text-teal-400 font-bold">{dateFilterMode === 'ALL' ? 'All Time' : dateFilterMode === 'TODAY' ? 'Today' : dateFilterMode === 'YESTERDAY' ? 'Yesterday' : selectedDate}</strong>
           &bull; ({getFilteredByDate(myLeads).length} Leads, {getFilteredByDate(myCallRecordings).length} Recordings)
         </div>
       </motion.div>
 
       {/* Tabs Navigation (Sales Executive Style) */}
-      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full">
+      <motion.div variants={blockVariants} className="bg-[var(--crm-bg-raised)] border-y border-[var(--crm-line)] px-3 sm:px-6 py-1 flex overflow-x-auto custom-scrollbar shadow-sm min-w-0 w-full rounded-xl font-sans">
         <nav className="flex space-x-4 sm:space-x-8 min-w-max px-1">
           {[
             { id: 'daily', label: 'Daily Action View', icon: FiClock },
@@ -812,12 +809,12 @@ export default function TrialDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3.5 px-1 border-b-2 text-[11px] uppercase tracking-widest font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${activeTab === tab.id
+              className={`py-3.5 px-1 border-b-2 text-xs uppercase tracking-wider font-sans font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${activeTab === tab.id
                   ? 'border-teal-500 text-teal-400'
                   : 'border-transparent text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
                 }`}
             >
-              <tab.icon size={13} className={activeTab === tab.id ? 'text-teal-400' : 'text-inherit'} />
+              <tab.icon size={14} className={activeTab === tab.id ? 'text-teal-400' : 'text-inherit'} />
               {tab.label}
             </button>
           ))}
@@ -992,7 +989,7 @@ export default function TrialDashboard() {
                             type="button"
                             onClick={() => handleStatusChange(myStatus, myActivity)}
                             disabled={submittingStatus}
-                            className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-[10px] uppercase px-3 py-2 rounded transition cursor-pointer"
+                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase px-4 py-2.5 rounded-xl transition cursor-pointer font-sans shadow-md shadow-blue-600/20"
                           >
                             UPDATE
                           </button>
@@ -1085,7 +1082,7 @@ export default function TrialDashboard() {
                       <button
                         type="submit"
                         disabled={submittingWorkLog}
-                        className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold text-[10px] uppercase tracking-wider py-3 rounded transition cursor-pointer font-mono shadow flex items-center justify-center gap-2"
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider py-3 rounded-xl transition cursor-pointer font-sans shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2"
                       >
                         {submittingWorkLog ? (
                           <>
@@ -1233,7 +1230,7 @@ export default function TrialDashboard() {
                     </h3>
                     <button
                       onClick={() => setShowCallModal(true)}
-                      className="text-[9px] uppercase font-bold bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1 rounded transition cursor-pointer"
+                      className="text-[9px] uppercase font-extrabold bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 px-3 py-1 rounded transition shadow-sm cursor-pointer"
                     >
                       + Upload Call Recording
                     </button>
@@ -1738,54 +1735,54 @@ export default function TrialDashboard() {
       {/* TASK COMPLETION MODAL */}
       <AnimatePresence>
         {completionTaskId && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 font-sans">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-md shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-md shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
             >
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--crm-heading)] flex items-center gap-2">
                   <FiUpload className="text-teal-400" size={16} /> Submit Task Completion File
                 </h3>
-                <button onClick={() => setCompletionTaskId(null)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+                <button onClick={() => setCompletionTaskId(null)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
               </div>
 
               <form onSubmit={handleTaskStatusUpdate} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Attach Verification File *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Attach Verification File *</label>
                   <input
                     type="file"
                     required
                     onChange={(e) => setCompletionFile(e.target.files[0])}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2 rounded text-[10px]"
+                    className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer font-sans"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">Completion Remarks / Notes</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1 font-sans">Completion Remarks / Notes</label>
                   <textarea
                     rows={3}
                     value={completionRemarks}
                     onChange={(e) => setCompletionRemarks(e.target.value)}
                     placeholder="Describe work completed..."
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl outline-none resize-none font-sans text-xs transition"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={submittingCompletion}
-                    className="flex-1 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl text-white bg-teal-600 hover:bg-teal-500 transition cursor-pointer disabled:opacity-50 uppercase tracking-wider"
                   >
                     {submittingCompletion ? 'Submitting File...' : 'Submit to Manager'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setCompletionTaskId(null)}
-                    className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
+                    className="py-2.5 px-4 text-xs font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer uppercase font-bold"
                   >
                     Cancel
                   </button>
@@ -1878,23 +1875,23 @@ export default function TrialDashboard() {
       {/* REQUEST QUOTATION MODAL */}
       <AnimatePresence>
         {showQuotationModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 font-sans">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
             >
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--crm-heading)] flex items-center gap-2">
                   💬 Request Quotation Approval from Manager
                 </h3>
-                <button onClick={() => setShowQuotationModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
+                <button onClick={() => setShowQuotationModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
               </div>
 
               <form onSubmit={handleQuotationSubmit} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
                   <select
                     required
                     value={quoteTargetLeadId}
@@ -1906,7 +1903,7 @@ export default function TrialDashboard() {
                         setEmployeeRequestedPrice(matched.leadValue);
                       }
                     }}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] font-sans transition"
                   >
                     <option value="">-- Choose Assigned Lead --</option>
                     {myLeads.map(l => (
@@ -1918,51 +1915,51 @@ export default function TrialDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Requested Deal Price / Valuation (INR) *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Requested Deal Price / Valuation (INR) *</label>
                   <input
                     type="number"
                     required
                     placeholder="e.g. 500000"
                     value={employeeRequestedPrice}
                     onChange={(e) => setEmployeeRequestedPrice(e.target.value)}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none font-mono"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none font-sans text-[var(--crm-heading)] transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Payment & Trade Terms</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Payment & Trade Terms</label>
                   <input
                     type="text"
                     placeholder="e.g. 50% Advance, 50% on Loading"
                     value={quotationTerms}
                     onChange={(e) => setQuotationTerms(e.target.value)}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none font-mono"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none font-sans text-[var(--crm-heading)] transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Margin / Quotation Notes</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Margin / Quotation Notes</label>
                   <textarea
                     rows={3}
                     value={marginNote}
                     onChange={(e) => setMarginNote(e.target.value)}
                     placeholder="Explain requested pricing or margin details..."
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={submittingQuotation}
-                    className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl text-white bg-amber-600 hover:bg-amber-500 transition cursor-pointer disabled:opacity-50 uppercase tracking-wider font-bold"
                   >
                     {submittingQuotation ? 'Submitting Request...' : 'Submit Quotation Request'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowQuotationModal(false)}
-                    className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
+                    className="py-2.5 px-4 text-xs font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer uppercase font-bold"
                   >
                     Cancel
                   </button>
@@ -1976,28 +1973,28 @@ export default function TrialDashboard() {
       {/* UPDATE LEAD STAGE MODAL */}
       <AnimatePresence>
         {showStageModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 font-sans">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-mono text-left space-y-4"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-[var(--crm-ink-soft)] font-sans text-left space-y-4"
             >
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--crm-heading)] flex items-center gap-2">
                   ⚡ Update Lead Pipeline Stage
                 </h3>
-                <button onClick={() => setShowStageModal(false)} className="text-xs text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
+                <button onClick={() => setShowStageModal(false)} className="text-base text-[var(--crm-ink-faint)] hover:text-white font-bold cursor-pointer">✕</button>
               </div>
 
               <form onSubmit={handleStageUpdateSubmit} className="space-y-4 text-xs font-medium">
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Select Lead *</label>
                   <select
                     required
                     value={stageTargetLeadId}
                     onChange={(e) => setStageTargetLeadId(e.target.value)}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer text-[var(--crm-heading)] font-sans transition"
                   >
                     <option value="">-- Choose Assigned Lead --</option>
                     {myLeads.map(l => (
@@ -2009,12 +2006,12 @@ export default function TrialDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1">New Stage *</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">New Stage *</label>
                   <select
                     required
                     value={newStageValue}
                     onChange={(e) => setNewStageValue(e.target.value)}
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded text-xs outline-none cursor-pointer uppercase font-bold"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none cursor-pointer uppercase font-bold text-[var(--crm-heading)] font-sans transition"
                   >
                     <option value="CONTACTED">CONTACTED</option>
                     <option value="FOLLOW_UP">FOLLOW UP</option>
@@ -2026,28 +2023,28 @@ export default function TrialDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] mb-1 font-mono">Update Remark / Notes</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Update Remark / Notes</label>
                   <textarea
                     rows={3}
                     value={stageRemark}
                     onChange={(e) => setStageRemark(e.target.value)}
                     placeholder="Enter stage update details..."
-                    className="w-full bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-heading)] p-2.5 rounded outline-none resize-none font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)]">
                   <button
                     type="submit"
                     disabled={submittingStage}
-                    className="flex-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold uppercase py-2.5 rounded text-[10px] tracking-wider transition cursor-pointer"
+                    className="flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl text-white bg-sky-600 hover:bg-sky-500 transition cursor-pointer disabled:opacity-50 uppercase tracking-wider font-bold"
                   >
                     {submittingStage ? 'Updating Stage...' : 'Update Stage'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowStageModal(false)}
-                    className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] px-4 py-2.5 rounded text-[10px] font-bold uppercase cursor-pointer"
+                    className="py-2.5 px-4 text-xs font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer uppercase font-bold"
                   >
                     Cancel
                   </button>

@@ -34,10 +34,24 @@ export const socketService = {
 
     // Listeners for task actions
     socket.on('task_assigned', (task) => {
-      toast.success(`New Task Assigned: "${task?.title || 'Task'}" 📋`, {
-        duration: 5000,
-        position: 'top-right'
-      });
+      const targetUserId = String(task?.assignedTo || task?.driverId || task?.targetUserId || task?.userId || '');
+      const isAssignedToMe = targetUserId && (
+        targetUserId === employeeId ||
+        targetUserId === String(user?._id) ||
+        targetUserId === String(user?.id) ||
+        targetUserId === String(user?.employeeId)
+      );
+
+      // Only show incoming task toast if assigned to current user or generic broadcast without target user ID
+      if (!targetUserId || isAssignedToMe) {
+        const taskId = task?.leadId || task?.tripId || task?._id || task?.id || 'task';
+        toast.success(`New Task Assigned: "${task?.title || (task?.driverName ? `Order for ${task.driverName}` : 'Task')}" 📋`, {
+          id: `socket_task_assigned_${taskId}`,
+          duration: 5000,
+          position: 'top-right'
+        });
+      }
+
       const event = new CustomEvent('task_assigned_event', { detail: task });
       window.dispatchEvent(event);
     });

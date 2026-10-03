@@ -36,6 +36,7 @@ import {
 } from 'react-icons/fi';
 import FileSharingWidget from '../../components/crm/FileSharingWidget';
 import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
+import CareerLeadInterviewModal from '../../components/crm/CareerLeadInterviewModal';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' };
 const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' };
@@ -106,13 +107,14 @@ export default function HrExecutiveDashboard() {
 
   const fetchPersonalHRData = async () => {
     try {
-      const [attToday, attLogs, lvBal, lvLogs, tskList, appsRes] = await Promise.all([
+      const [attToday, attLogs, lvBal, lvLogs, tskList, appsRes, leadsRes] = await Promise.all([
         attendanceApi.getMyToday().catch(() => null),
         attendanceApi.getMyHistory({ limit: 5 }).catch(() => null),
         leaveApi.getMyBalance().catch(() => null),
         leaveApi.getLeaves().catch(() => null),
         taskApi.getTasks().catch(() => null),
-        careersApi.getApplications().catch(() => null)
+        careersApi.getApplications().catch(() => null),
+        careersApi.getCareerLeads().catch(() => null)
       ]);
 
       if (attToday && attToday.success) setTodayAttendance(attToday.data.record || attToday.data.attendance);
@@ -131,6 +133,29 @@ export default function HrExecutiveDashboard() {
 
       let candidateTasks = [];
       let extractedInterviews = [];
+
+      // Process Career Leads assigned to HR Executive
+      if (leadsRes && leadsRes.success) {
+        const mongoLeads = leadsRes.data?.leads || leadsRes.leads || [];
+        mongoLeads.forEach(lead => {
+          const isLeadAssigned = isTaskForUser({ assignedTo: lead.assignedTo, assignedToName: lead.assignedToName }, user);
+          if (isLeadAssigned) {
+            candidateTasks.push({
+              _id: `lead_task_${lead._id}`,
+              id: lead._id,
+              isCareerLeadTask: true,
+              careerLead: lead,
+              title: `Career Lead: ${lead.fullName} (${lead.position || 'General Candidate'})`,
+              description: `Assigned Talent Bank lead followup. Location: ${lead.location || 'N/A'}. Contact: ${lead.phone || 'N/A'} | ${lead.email || 'N/A'}. Ref: ${lead.refNo || 'N/A'}${lead.notes ? ` | Notes: ${lead.notes}` : ''}`,
+              dueDate: lead.assignedAt || lead.createdAt || new Date().toISOString(),
+              priority: lead.status === 'NEW' ? 'HIGH' : 'MEDIUM',
+              status: (lead.status === 'CONTACTED' || lead.status === 'HIRED' || lead.status === 'INTERVIEW_SCHEDULED') ? 'COMPLETED' : 'PENDING',
+              assignedBy: { name: lead.assignedByName || 'HR Manager' },
+              category: 'CAREER_LEAD'
+            });
+          }
+        });
+      }
 
       if (appsRes && appsRes.success) {
         const mongoApplications = appsRes.data.applications || [];
@@ -520,7 +545,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
   // Helper matching functions for tasks & interviews
   const isTaskForUser = (t, currentUser) => {
     if (!currentUser || !t) return false;
-    if (t.isUserBackendTask || t.isApplicationTask) return true;
+    if (t.isUserBackendTask || t.isApplicationTask || t.isCareerLeadTask) return true;
 
     const uId = String(currentUser._id || currentUser.id || '').toLowerCase();
     const uEmpId = String(currentUser.employeeId || '').toLowerCase();
@@ -573,6 +598,20 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
 
   // Complete tasks (Backend connected)
   const handleToggleTaskStatus = async (taskId, currentStatus, taskObj = null) => {
+    if (taskObj && taskObj.isCareerLeadTask && taskObj.careerLead) {
+      const nextLeadStatus = currentStatus === 'COMPLETED' ? 'NEW' : 'CONTACTED';
+      try {
+        const res = await careersApi.updateCareerLeadStatus(taskObj.careerLead._id, { status: nextLeadStatus });
+        if (res && res.success) {
+          toast.success(`Career Lead status updated to ${nextLeadStatus}! 🎯`);
+          fetchPersonalHRData();
+        }
+      } catch (err) {
+        toast.error('Failed to update lead status');
+      }
+      return;
+    }
+
     if (taskObj && taskObj.isApplicationTask && taskObj.candidateApp) {
       handleOpenFeedback({
         id: taskObj.candidateApp._id,
@@ -660,6 +699,23 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
     }
 
     try {
+      if (selectedCandidateForSchedule?.isCareerLead) {
+        const leadId = selectedCandidateForSchedule._id || selectedCandidateForSchedule.id;
+        const noteMsg = `Interview Scheduled on ${scheduleForm.date} @ ${scheduleForm.time} (${scheduleForm.roundName}). ${scheduleForm.meetingLink ? `Meeting Link: ${scheduleForm.meetingLink}` : ''}${scheduleForm.notes ? ` | Notes: ${scheduleForm.notes}` : ''}`;
+        
+        const res = await careersApi.updateCareerLeadStatus(leadId, {
+          status: 'INTERVIEW_SCHEDULED',
+          notes: noteMsg
+        });
+
+        if (res && res.success) {
+          toast.success(`Interview scheduled successfully for ${selectedCandidateForSchedule.fullName}! 🗓️`);
+          setShowScheduleModal(false);
+          fetchPersonalHRData();
+        }
+        return;
+      }
+
       const interviewDetails = {
         date: scheduleForm.date,
         time: scheduleForm.time,
@@ -965,18 +1021,43 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-[var(--crm-line)] flex items-center justify-between">
-                        <span className="text-[10px] text-[var(--crm-ink-faint)] font-mono">BY: {t.assignedBy?.name || t.assignedBy?.fullName || 'HR Manager'}</span>
-                        <button
-                          onClick={() => handleToggleTaskStatus(t._id || t.id, t.status, t)}
-                          className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-sm border transition duration-200 cursor-pointer ${
-                            t.status === 'COMPLETED'
-                              ? 'bg-[var(--crm-positive-bg)] text-[var(--crm-positive)] border-[var(--crm-positive)]/20'
-                              : 'bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)]'
-                          }`}
-                        >
-                          {t.isApplicationTask ? (t.status === 'COMPLETED' ? 'REVIEWED' : 'EVALUATE CANDIDATE') : (t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED')}
-                        </button>
+                      <div className="mt-4 pt-3 border-t border-[var(--crm-line)] space-y-2.5">
+                        <div className="flex items-center justify-between text-[10px] font-mono text-[var(--crm-ink-faint)]">
+                          <span>BY: {t.assignedBy?.name || t.assignedBy?.fullName || 'HR Manager'}</span>
+                          <span className="font-bold text-blue-400 uppercase tracking-wider">{t.category || 'DIRECTIVE'}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+                          {(t.isCareerLeadTask || t.isApplicationTask) && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenScheduleModal(t.careerLead ? { _id: t.careerLead._id, id: t.careerLead._id, fullName: t.careerLead.fullName, position: t.careerLead.position, email: t.careerLead.email, isCareerLead: true } : t.candidateApp)}
+                              className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold font-sans uppercase rounded-xl shadow-md border border-blue-500/50 py-2.5 px-3 text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer"
+                              title="Schedule Candidate Interview"
+                            >
+                              <FiCalendar size={13} className="shrink-0" />
+                              <span className="truncate">Schedule Interview</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTaskStatus(t._id || t.id, t.status, t)}
+                            className={`w-full font-bold font-sans uppercase rounded-xl shadow-md py-2.5 px-3 text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border ${
+                              t.status === 'COMPLETED'
+                                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900'
+                                : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white border-emerald-500'
+                            } ${(!t.isCareerLeadTask && !t.isApplicationTask) ? 'col-span-1 sm:col-span-2' : ''}`}
+                          >
+                            <FiCheckCircle size={13} className="shrink-0" />
+                            <span className="truncate">
+                              {t.isApplicationTask
+                                ? (t.status === 'COMPLETED' ? 'REVIEWED' : 'EVALUATE CANDIDATE')
+                                : t.isCareerLeadTask
+                                ? (t.status === 'COMPLETED' ? 'CONTACTED' : 'MARK CONTACTED')
+                                : (t.status === 'COMPLETED' ? 'COMPLETED' : 'MARK COMPLETED')}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1002,7 +1083,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                   {myInterviews.map((item, idx) => (
                     <div
                       key={`${item.id || 'interview'}_${idx}`}
-                      className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-line)] p-5 rounded-sm shadow-xl flex flex-col justify-between hover:border-[var(--crm-accent)]/35 transition-all duration-300"
+                      className="bg-[var(--crm-bg-raised)]/30 border border-[var(--crm-line)] p-5 rounded-2xl shadow-xl flex flex-col justify-between hover:border-blue-500/40 transition-all duration-300"
                     >
                       <div className="space-y-3 text-left">
                         <div className="flex justify-between items-center w-full">
@@ -1030,7 +1111,7 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                         </div>
 
                         {item.meetingLink && (
-                          <div className="bg-teal-950/40 border border-teal-800/40 p-2.5 rounded-sm text-[11px]">
+                          <div className="bg-teal-950/40 border border-teal-800/40 p-2.5 rounded-xl text-[11px]">
                             <span className="text-[9px] font-mono font-bold text-teal-400 uppercase block mb-1">📹 Video Conference Link:</span>
                             <a
                               href={item.meetingLink.startsWith('http') ? item.meetingLink : `https://${item.meetingLink}`}
@@ -1044,14 +1125,14 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                         )}
 
                         {item.notes && (
-                          <div className="bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] p-2.5 rounded-sm text-[11px]">
+                          <div className="bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] p-2.5 rounded-xl text-[11px]">
                             <span className="text-[9px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Manager Note:</span>
                             <span className="italic">"{item.notes}"</span>
                           </div>
                         )}
 
                         {item.feedback && (
-                          <div className="bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 p-2.5 rounded-sm text-[11px] text-[var(--crm-positive)]">
+                          <div className="bg-[var(--crm-positive-bg)] border border-[var(--crm-positive)]/20 p-2.5 rounded-xl text-[11px] text-[var(--crm-positive)]">
                             <span className="text-[9px] font-mono font-bold uppercase block text-[var(--crm-positive)]/80">Submitted Evaluation:</span>
                             <span>"{item.feedback}"</span>
                           </div>
@@ -1059,18 +1140,22 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
                       </div>
 
                       <div className="mt-5 pt-3.5 border-t border-[var(--crm-line)]">
-                        <div className="flex flex-col sm:flex-row gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
                           <button
+                            type="button"
                             onClick={() => handleOpenScheduleModal(item.candidateApp || { _id: item.candidateId, fullName: item.candidateName, position: item.position })}
-                            className="flex-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/50 py-2.5 text-xs font-mono font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center flex items-center justify-center gap-1"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold font-sans uppercase rounded-xl shadow-md border border-blue-500/50 py-2.5 px-3 text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           >
-                            <span>🗓️ {item.isUnscheduled ? 'Schedule Interview' : 'Re-Schedule'}</span>
+                            <FiCalendar size={13} className="shrink-0" />
+                            <span className="truncate">{item.isUnscheduled ? 'Schedule Interview' : 'Re-Schedule'}</span>
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleOpenFeedback(item)}
-                            className="flex-1 bg-[var(--crm-heading)] hover:bg-[var(--crm-ink-soft)] text-[var(--crm-bg-sunken)] py-2.5 text-xs font-bold uppercase tracking-wider rounded-sm transition duration-200 cursor-pointer shadow-md text-center"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-sans uppercase rounded-xl shadow-md border border-emerald-500/50 py-2.5 px-3 text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           >
-                            {item.status === 'PASSED' || item.status === 'FAILED' ? 'Update Log' : 'Conduct & Log Outcome'}
+                            <FiCheckCircle size={13} className="shrink-0" />
+                            <span className="truncate">{item.status === 'PASSED' || item.status === 'FAILED' ? 'Update Log' : 'Conduct & Log Outcome'}</span>
                           </button>
                         </div>
                       </div>
@@ -1518,114 +1603,13 @@ function isEmployeeMatchingFilter(item, filterType, filterDate) {
           </div>
         </div>
       )}
-      {/* SCHEDULE INTERVIEW MODAL */}
-      {showScheduleModal && selectedCandidateForSchedule && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-xl p-6 w-full max-w-lg border border-purple-500/30 shadow-2xl text-left overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--crm-ink-soft)]/20">
-              <div>
-                <h2 className="font-serif text-lg text-[var(--crm-heading)] uppercase tracking-wide flex items-center gap-2">
-                  <span>🗓️ Schedule Candidate Interview</span>
-                </h2>
-                <p className="text-xs text-[var(--crm-ink-faint)] font-mono mt-0.5">
-                  CANDIDATE: {selectedCandidateForSchedule.fullName} ({selectedCandidateForSchedule.position})
-                </p>
-              </div>
-              <button
-                onClick={() => setShowScheduleModal(false)}
-                className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleScheduleSubmit} className="space-y-4 text-xs font-medium">
-              <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
-                  Round Title / Stage Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={scheduleForm.roundName}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, roundName: e.target.value })}
-                  placeholder="e.g. Round 1 - Screening / Technical Round"
-                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
-                    Scheduled Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={scheduleForm.date}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
-                    Scheduled Time *
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={scheduleForm.time}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
-                  Video Conference Link (Google Meet / Zoom URL)
-                </label>
-                <input
-                  type="url"
-                  value={scheduleForm.meetingLink}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, meetingLink: e.target.value })}
-                  placeholder="https://meet.google.com/abc-defg-hij or Zoom link"
-                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-widest mb-1 font-mono">
-                  Instructions / Manager Remarks
-                </label>
-                <textarea
-                  rows={3}
-                  value={scheduleForm.notes}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
-                  placeholder="Additional context for candidate or panel..."
-                  className="w-full px-3 py-2 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded text-xs text-[var(--crm-heading)] outline-none focus:border-purple-500 font-sans resize-none"
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-3 border-t border-[var(--crm-line)]">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-purple-800 hover:bg-purple-700 text-white rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer shadow-md"
-                >
-                  Save & Schedule Panel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowScheduleModal(false)}
-                  className="flex-1 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] text-[var(--crm-ink-soft)] rounded font-mono font-bold uppercase tracking-wider transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* SCHEDULE INTERVIEW & AUDIT LOG MODAL */}
+      <CareerLeadInterviewModal
+        lead={selectedCandidateForSchedule}
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onRefresh={fetchPersonalHRData}
+      />
 
       {/* ─── MODAL: VIEW ALL EMPLOYEE DOCUMENTS ─── */}
       {viewEmployeeDocsModal && (
