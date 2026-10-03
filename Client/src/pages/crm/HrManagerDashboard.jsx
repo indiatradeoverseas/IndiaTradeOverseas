@@ -3829,13 +3829,15 @@ const handleTriggerReset = async () => {
 
       {/* Task Allocation Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-[70] p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-2xl p-6 w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--crm-line)]">
-              <h2 className="text-lg font-bold text-[var(--crm-heading)]">Assign Operations Task</h2>
-              <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold">✕</button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[200] p-3 sm:p-4 overflow-y-auto min-h-screen py-6 sm:py-10" onClick={() => setShowTaskModal(false)}>
+          <div className="bg-[var(--crm-bg-raised)] rounded-2xl w-full max-w-md border border-[var(--crm-line)] shadow-2xl text-left my-auto max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 flex justify-between items-center border-b border-[var(--crm-line)] shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                <FiCheckSquare className="text-teal-400" size={18} /> Assign Operations Task
+              </h2>
+              <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-base cursor-pointer p-1 rounded hover:bg-white/10 transition">✕</button>
             </div>
-            <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
+            <form onSubmit={handleTaskSubmit} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4 text-xs font-medium custom-scrollbar">
               <div>
                 <label className="block text-[11px] font-bold text-[var(--crm-ink-faint)] uppercase tracking-wider mb-1">Assign Employee *</label>
                 <select
@@ -3898,7 +3900,7 @@ const handleTriggerReset = async () => {
                   />
                 </div>
               </div>
-              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
                 <button type="submit" className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer">
                   Assign Task
                 </button>

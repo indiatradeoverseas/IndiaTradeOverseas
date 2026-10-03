@@ -30,6 +30,13 @@ const CARD_SUNKEN = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-
 const LABEL_MONO = { fontFamily: 'var(--crm-font-body)', color: 'var(--crm-ink-faint)' };
 const HEADING = { fontFamily: 'var(--crm-font-display)', color: 'var(--crm-heading)' };
 
+// ─── UNIFIED BUTTON STYLES (GREEN + BLUE) ────────────────────────────
+const BTN_BLUE = "inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wide rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.97] text-white shadow-sm border border-blue-400/30 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_GREEN = "inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wide rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.97] text-white shadow-sm border border-emerald-400/30 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_BLUE_FULL = `${BTN_BLUE} w-full`;
+const BTN_GREEN_FULL = `${BTN_GREEN} w-full`;
+const BTN_ICON = "inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-sm border border-emerald-400/30 cursor-pointer transition";
+
 export default function DriverMobileView() {
   const { user } = useAuth();
   const location = useLocation();
@@ -1464,15 +1471,12 @@ export default function DriverMobileView() {
                     placeholder="Enter Vehicle Number (e.g. UP32KK0001)"
                     value={profileVehicleNumber}
                     onChange={(e) => setProfileVehicleNumber(e.target.value.toUpperCase())}
-                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] outline-none font-sans focus:border-teal-500 transition"
+                    className="w-full px-3.5 py-2.5 border rounded-xl text-xs font-bold text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] outline-none font-sans focus:border-blue-500 transition"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold uppercase rounded-xl cursor-pointer transition shadow flex items-center justify-center gap-1.5 font-sans"
-                  >
+                  <button type="submit" className={BTN_BLUE_FULL}>
                     <FiCheckCircle size={14} /> Save Profile
                   </button>
                 </div>
@@ -1480,7 +1484,7 @@ export default function DriverMobileView() {
             </div>
 
             {/* ─────────────────────────────────────────────────────────────
-                SECTION 2: 4 METRICS CARDS & OPERATIONAL PERFORMANCE CHART DIRECTLY BELOW
+                SECTION 2: 4 METRICS CARDS & OPERATIONAL PERFORMANCE CHART
                ───────────────────────────────────────────────────────────── */}
             <div className="space-y-4 font-sans">
               {/* 4 Metrics Cards Row */}
@@ -1518,7 +1522,7 @@ export default function DriverMobileView() {
                 </div>
               </div>
 
-              {/* Operational Performance & Revenue Trend Chart (Directly Below 4 Metric Cards) */}
+              {/* Operational Performance Chart */}
               <div className="border rounded-xl p-4 shadow-md font-sans space-y-3" style={CARD}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5" style={{ borderColor: 'var(--crm-line)' }}>
                   <div className="flex items-center gap-2">
@@ -1542,15 +1546,22 @@ export default function DriverMobileView() {
                 <div className="h-64 sm:h-72 w-full pt-2 min-w-0">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <BarChart
-                      data={[
-                        { day: 'Mon', dispatches: Math.max(1, Math.round((metrics.totalDispatch || 8) * 0.4)), tasks: Math.max(1, metrics.taskAssign || 3), complete: Math.max(0, (metrics.complete || 5) - 3), revenue: Math.round((metrics.revenue || 33588200) * 0.15 / 100000) },
-                        { day: 'Tue', dispatches: Math.max(2, Math.round((metrics.totalDispatch || 8) * 0.6)), tasks: Math.max(2, (metrics.taskAssign || 3) + 1), complete: Math.max(1, (metrics.complete || 5) - 2), revenue: Math.round((metrics.revenue || 33588200) * 0.25 / 100000) },
-                        { day: 'Wed', dispatches: Math.max(3, Math.round((metrics.totalDispatch || 8) * 0.8)), tasks: Math.max(1, metrics.taskAssign || 3), complete: Math.max(2, (metrics.complete || 5) - 1), revenue: Math.round((metrics.revenue || 33588200) * 0.45 / 100000) },
-                        { day: 'Thu', dispatches: metrics.totalDispatch || 8, tasks: metrics.taskAssign || 3, complete: metrics.complete || 5, revenue: Math.round((metrics.revenue || 33588200) * 0.75 / 100000) },
-                        { day: 'Fri', dispatches: Math.max(4, Math.round((metrics.totalDispatch || 8) * 1.1)), tasks: 4, complete: Math.max(3, metrics.complete || 5), revenue: Math.round((metrics.revenue || 33588200) * 0.85 / 100000) },
-                        { day: 'Sat', dispatches: Math.max(2, Math.round((metrics.totalDispatch || 8) * 0.7)), tasks: 2, complete: Math.max(4, metrics.complete || 5), revenue: Math.round((metrics.revenue || 33588200) * 0.95 / 100000) },
-                        { day: 'Sun', dispatches: Math.max(5, Math.round((metrics.totalDispatch || 8) * 1.0)), tasks: 3, complete: metrics.complete || 5, revenue: Math.round((metrics.revenue || 33588200) / 100000) },
-                      ]}
+                      data={['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                        const hasMetrics = Boolean(metrics.totalDispatch > 0 || metrics.revenue > 0 || metrics.taskAssign > 0 || metrics.complete > 0);
+                        if (!hasMetrics) {
+                          return { day, dispatches: 0, tasks: 0, complete: 0, revenue: 0 };
+                        }
+                        const todayIndex = new Date().getDay();
+                        const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const isToday = day === daysArr[todayIndex];
+                        return {
+                          day,
+                          dispatches: isToday ? (metrics.totalDispatch || 0) : 0,
+                          tasks: isToday ? (metrics.taskAssign || 0) : 0,
+                          complete: isToday ? (metrics.complete || 0) : 0,
+                          revenue: isToday ? Math.round((metrics.revenue || 0) / 100000) : 0
+                        };
+                      })}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-line)" opacity={0.3} />
@@ -1591,22 +1602,23 @@ export default function DriverMobileView() {
 
             {/* Middle Section: Map & Assign Leads */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-sans">
+              {/* DYNAMIC MAP SECTION */}
               <div className="lg:col-span-7 border rounded-xl overflow-hidden shadow-sm flex flex-col font-sans" style={CARD}>
                 <div className="p-3.5 border-b flex items-center justify-between font-sans" style={{ ...CARD_SUNKEN, borderColor: 'var(--crm-line)' }}>
                   <div className="flex items-center gap-2">
-                    <FiNavigation className="text-sky-400" size={16} />
-                    <h2 className="text-xs uppercase font-bold tracking-wider font-sans" style={HEADING}>Google Map Live Telemetry</h2>
+                    <FiNavigation className="text-blue-500" size={16} />
+                    <h2 className="text-xs uppercase font-bold tracking-wider font-sans text-[var(--crm-heading)]">Google Map Live Telemetry</h2>
                   </div>
-                  <button onClick={captureDeviceGps} className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-sky-400 text-[10px] font-sans font-bold rounded-lg cursor-pointer hover:bg-[var(--crm-bg-raised)]">
-                    <FiCrosshair size={12} className="inline mr-1" /> Recenter GPS
+                  <button onClick={captureDeviceGps} className={BTN_BLUE}>
+                    <FiCrosshair size={12} /> Recenter GPS
                   </button>
                 </div>
-                <div className="relative w-full flex-1 min-h-[480px] bg-[var(--crm-bg-sunken)]">
+                <div className="relative w-full flex-1 min-h-[480px]">
                   <iframe
                     title="Google Map"
                     width="100%"
                     height="100%"
-                    style={{ border: 0, filter: 'invert(90%) hue-rotate(180%)' }}
+                    className="border-0 w-full h-full transition-all duration-300"
                     src={`https://maps.google.com/maps?q=${gpsLocation.lat},${gpsLocation.long}&z=${mapZoom}&output=embed`}
                   />
                 </div>
@@ -1660,7 +1672,7 @@ export default function DriverMobileView() {
                             </div>
 
                             <div className="pt-1.5 border-t border-[var(--crm-line)]/50 text-[10px] space-y-1.5 font-mono">
-                              <div className="flex justify-between items-center">
+                              <div className="flex justify-between items-center gap-2 flex-wrap">
                                 <div className="space-y-0.5">
                                   <div className="text-[var(--crm-ink-faint)]">Assigned To Driver: <strong className="text-teal-400">{d.driverName || d.assignedDriverName || (typeof d.assignedTo === 'object' ? (d.assignedTo?.fullName || d.assignedTo?.name) : d.assignedTo) || user?.name || user?.fullName || '—'}</strong></div>
                                   <div className="text-[var(--crm-ink-faint)]">Order Confirmed By: <strong className="text-teal-300">{d.orderConfirmedBy || d.salesOwner || '—'}</strong></div>
@@ -1670,7 +1682,7 @@ export default function DriverMobileView() {
                                 <button
                                   type="button"
                                   onClick={(e) => handleOpenDeliveryModal(d, e)}
-                                  className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[10px] uppercase rounded shadow cursor-pointer transition flex items-center gap-1 shrink-0"
+                                  className={BTN_GREEN}
                                 >
                                   <FiCheckCircle size={12} /> Mark Delivered
                                 </button>
@@ -1723,7 +1735,7 @@ export default function DriverMobileView() {
                           placeholder="Enter current toll plaza or location"
                           value={workUpdateForm.location}
                           onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 border rounded-xl text-slate-100 placeholder:text-slate-500 text-xs outline-none font-sans"
+                          className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)] text-xs outline-none font-sans"
                           style={CARD_SUNKEN}
                         />
                       </div>
@@ -1736,14 +1748,14 @@ export default function DriverMobileView() {
                         placeholder="Enter work details or toll remarks"
                         value={workUpdateForm.notes}
                         onChange={(e) => setWorkUpdateForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 border rounded-xl text-slate-100 placeholder:text-slate-500 text-xs outline-none font-sans"
+                        className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)] text-xs outline-none font-sans"
                         style={CARD_SUNKEN}
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={submittingWorkUpdate}
-                      className="w-full py-2.5 bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-2 shadow font-sans"
+                      className={BTN_BLUE_FULL}
                     >
                       <FiSend size={14} />
                       {submittingWorkUpdate ? 'Posting Update...' : 'POST WORK UPDATE TO TRANSPORT MANAGER'}
@@ -1772,24 +1784,25 @@ export default function DriverMobileView() {
                 </div>
               </div>
 
-              <div className="lg:col-span-5 border rounded-xl p-4 min-h-[390px] flex flex-col justify-between shadow-2xl bg-[#111317] border-slate-800 font-sans">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3 font-sans">
+              {/* DYNAMIC CHAT SECTION */}
+              <div className="lg:col-span-5 border rounded-xl p-4 min-h-[390px] flex flex-col justify-between shadow-2xl font-sans" style={CARD}>
+                <div className="flex items-center justify-between border-b pb-3 font-sans" style={{ borderColor: 'var(--crm-line)' }}>
                   <div className="flex items-center gap-2 font-sans">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <h2 className="text-xs uppercase font-bold tracking-wider text-slate-100 font-sans">LIVE DESK CHAT</h2>
+                    <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--crm-heading)] font-sans">LIVE DESK CHAT</h2>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] bg-[#090b0e] p-1 rounded-lg border border-slate-800 font-sans">
+                  <div className="flex items-center gap-1.5 text-[10px] bg-[var(--crm-bg-sunken)] p-1 rounded-lg border border-[var(--crm-line)] font-sans">
                     <button
                       type="button"
                       onClick={() => setChatChannel('MANAGER')}
-                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'MANAGER' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'MANAGER' ? 'bg-blue-600 text-white shadow' : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'}`}
                     >
                       Manager
                     </button>
                     <button
                       type="button"
                       onClick={() => setChatChannel('EXECUTIVE')}
-                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'EXECUTIVE' ? 'bg-[#00897b] text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                      className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer font-sans ${chatChannel === 'EXECUTIVE' ? 'bg-blue-600 text-white shadow' : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'}`}
                     >
                       Executive
                     </button>
@@ -1798,7 +1811,7 @@ export default function DriverMobileView() {
 
                 <div ref={chatContainerRef} className="space-y-3 overflow-y-auto max-h-[260px] my-2 text-xs font-sans custom-scrollbar flex flex-col pr-1">
                   {(chatMessages[chatChannel] || []).length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 text-xs italic font-sans">
+                    <div className="p-8 text-center text-[var(--crm-ink-faint)] text-xs italic font-sans">
                       No messages with {chatChannel === 'MANAGER' ? 'Transport Manager' : 'Transport Executive'}. Type below to broadcast live message.
                     </div>
                   ) : (
@@ -1818,11 +1831,11 @@ export default function DriverMobileView() {
                           <div
                             className={`p-3 rounded-xl text-xs space-y-1 shadow-md font-sans ${
                               isMe
-                                ? 'bg-[#00897b] text-white rounded-tr-none'
-                                : 'bg-[#1a1d24] border border-slate-800 text-slate-200 rounded-tl-none'
+                                ? 'bg-emerald-600 text-white rounded-tr-none'
+                                : 'bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] text-[var(--crm-ink-soft)] rounded-tl-none'
                             }`}
                           >
-                            <span className={`text-[9px] font-bold block ${isMe ? 'text-teal-100' : 'text-slate-400'}`}>
+                            <span className={`text-[9px] font-bold block ${isMe ? 'text-emerald-100' : 'text-[var(--crm-ink-faint)]'}`}>
                               {m.sender}
                             </span>
                             <p className="text-xs font-sans font-semibold leading-relaxed whitespace-pre-wrap">
@@ -1835,22 +1848,22 @@ export default function DriverMobileView() {
                   )}
                 </div>
 
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800 font-sans">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-[var(--crm-line)] font-sans">
                   <input
                     type="text"
                     placeholder={`Message ${chatChannel === 'MANAGER' ? 'Transport Manager' : 'Executive'}...`}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    className="flex-1 py-2.5 px-3.5 bg-[#090b0e] border border-teal-700/60 rounded-xl text-slate-100 placeholder:text-slate-400 placeholder:opacity-90 text-xs outline-none focus:border-teal-500 transition font-sans"
+                    className="flex-1 py-2.5 px-3.5 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl text-[var(--crm-heading)] placeholder-[var(--crm-ink-faint)] text-xs outline-none focus:border-blue-500 transition font-sans"
                   />
-                  <button type="submit" className="p-2.5 bg-[#00897b] hover:bg-[#00796b] text-white rounded-xl shadow cursor-pointer transition flex items-center justify-center font-sans">
+                  <button type="submit" className={BTN_ICON}>
                     <FiSend size={15} />
                   </button>
                 </form>
               </div>
             </div>
 
-            {/* DRIVER VEHICLE DAILY TRIP & EXPENSE LOG FORM CARD (LAYOUT MATCHES DESIGN WIREFRAME) */}
+            {/* DRIVER VEHICLE DAILY TRIP & EXPENSE LOG FORM CARD */}
             <div className="border-2 border-[var(--crm-line)] rounded-xl p-5 space-y-4 shadow-lg font-sans mt-5 bg-[var(--crm-bg-raised)]" style={CARD}>
               <div className="flex items-center justify-between border-b pb-3 flex-wrap gap-2" style={{ borderColor: 'var(--crm-line)' }}>
                 <h2 className="text-sm uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-2" style={HEADING}>
@@ -1892,9 +1905,8 @@ export default function DriverMobileView() {
                   </select>
                 </div>
 
-                {/* 2-COLUMN GRID matching the Wireframe */}
+                {/* 2-COLUMN GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans">
-                  {/* Row 1 - Left: Driver Vechical number */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Driver Vehicle Number *
@@ -1905,11 +1917,10 @@ export default function DriverMobileView() {
                       placeholder="Driver Vehicle Number"
                       value={fuelExpenseForm.vehicleNumber}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-blue-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
-                  {/* Row 1 - Right: fuel Cost */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400" style={LABEL_MONO}>
                       Fuel Cost (₹)
@@ -1923,7 +1934,6 @@ export default function DriverMobileView() {
                     />
                   </div>
 
-                  {/* Row 2 - Left: Total Drive Today */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Total Drive Today (KM)
@@ -1933,11 +1943,10 @@ export default function DriverMobileView() {
                       placeholder="Total Drive Today"
                       value={fuelExpenseForm.kmDriven}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, kmDriven: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-blue-500 transition font-mono bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
-                  {/* Row 2 - Right: Todays Trip */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Todays Trip
@@ -1947,11 +1956,10 @@ export default function DriverMobileView() {
                       placeholder="Todays Trip"
                       value={fuelExpenseForm.todaysTrip}
                       onChange={(e) => setFuelExpenseForm(prev => ({ ...prev, todaysTrip: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-teal-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-[var(--crm-heading)] placeholder:text-[var(--crm-ink-faint)] font-bold text-xs outline-none focus:border-blue-500 transition font-sans bg-[var(--crm-bg-sunken)] border-[var(--crm-line)]"
                     />
                   </div>
 
-                  {/* Row 3 - Left: Vehicle Mileage */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)]" style={LABEL_MONO}>
                       Vehicle Mileage (KM/L)
@@ -1966,7 +1974,6 @@ export default function DriverMobileView() {
                     />
                   </div>
 
-                  {/* Row 3 - Right: Other Expense */}
                   <div className="space-y-1">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-300" style={LABEL_MONO}>
                       Other Expense (₹)
@@ -1981,7 +1988,6 @@ export default function DriverMobileView() {
                   </div>
                 </div>
 
-                {/* Optional Remarks input */}
                 <div className="font-sans">
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Remarks / Bill Notes (Optional)</label>
                   <input
@@ -1993,14 +1999,10 @@ export default function DriverMobileView() {
                   />
                 </div>
 
-                {/* Bottom Row - Centered Submit Button */}
+                {/* Centered Submit Button */}
                 <div className="flex justify-center pt-2 font-sans">
-                  <button
-                    type="submit"
-                    disabled={submittingExpense}
-                    className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm uppercase tracking-wider rounded-xl cursor-pointer transition shadow-lg flex items-center justify-center gap-2 border border-emerald-400/40 font-sans"
-                  >
-                    <FiCheckCircle size={18} />
+                  <button type="submit" disabled={submittingExpense} className={BTN_GREEN}>
+                    <FiCheckCircle size={16} />
                     {submittingExpense ? 'Submitting Log...' : 'Submit'}
                   </button>
                 </div>
@@ -2035,7 +2037,7 @@ export default function DriverMobileView() {
               </div>
             </div>
 
-            {/* Calculator for Driver Component matching user layout */}
+            {/* Calculator for Driver Component */}
             <DriverCalculator defaultDriverName={user?.name || user?.fullName} defaultVehicleNo={profileVehicleNumber || user?.vehicleNumber} />
           </>
         ) : null}
@@ -2163,7 +2165,7 @@ export default function DriverMobileView() {
               {/* Date & Quick Filters Bar */}
               <div className="p-3.5 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] flex flex-wrap items-center justify-between gap-3 shadow-md">
                 <div className="flex items-center gap-2">
-                  <FiFilter className="text-teal-500 text-sm" />
+                  <FiFilter className="text-blue-500 text-sm" />
                   <span className="text-xs font-bold text-[var(--crm-heading)] uppercase tracking-wider">Filter Records:</span>
                 </div>
 
@@ -2174,10 +2176,10 @@ export default function DriverMobileView() {
                       setDeliveredFilter('ALL');
                       setDeliveredFilterDate('');
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
                       deliveredFilter === 'ALL'
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-                        : 'bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:text-emerald-600'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:text-blue-600'
                     }`}
                   >
                     All Records ({allCompletedLoads.length})
@@ -2189,7 +2191,7 @@ export default function DriverMobileView() {
                       setDeliveredFilter('TODAY');
                       setDeliveredFilterDate('');
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
                       deliveredFilter === 'TODAY'
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
                         : 'bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] hover:text-emerald-600'
@@ -2202,7 +2204,7 @@ export default function DriverMobileView() {
                     Today's Delivered
                   </button>
 
-                  <div className="flex items-center gap-1.5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg px-2.5 py-1 focus-within:border-teal-500 transition-colors">
+                  <div className="flex items-center gap-1.5 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-lg px-2.5 py-1 focus-within:border-blue-500 transition-colors">
                     <span className="text-[11px] text-[var(--crm-ink-faint)] font-bold uppercase">Datewise:</span>
                     <input
                       type="date"
@@ -2311,7 +2313,7 @@ export default function DriverMobileView() {
                                     href={d.driverProofUrl || d.podFileUrl || d.paymentProofUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2.5 py-1 bg-teal-800 dark:bg-teal-900/60 hover:bg-teal-700 text-white dark:text-teal-200 border border-teal-500 rounded text-[10px] font-bold uppercase transition"
+                                    className="px-2.5 py-1 bg-blue-700 hover:bg-blue-600 text-white border border-blue-400/40 rounded text-[10px] font-bold uppercase transition"
                                   >
                                     🖼️ View Uploaded Proofs
                                   </a>
@@ -2402,7 +2404,7 @@ export default function DriverMobileView() {
                   displayDispatches.map((item) => (
                     <div key={item._id || item.dispatchNumber} className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-mono">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <strong className="text-sm text-[var(--crm-heading)] font-bold block">{item.customerName || 'Client'}</strong>
                           <span className={`text-[9px] px-2 py-0.5 border rounded font-bold uppercase ${
                             (item.paymentMode || '').toUpperCase().includes('COD')
@@ -2442,7 +2444,7 @@ export default function DriverMobileView() {
         })() : null}
 
         {/* ─────────────────────────────────────────────────────────────
-            TAB 3: MY DRIVER PROFILE VIEW
+            TAB 4: MY DRIVER PROFILE VIEW
            ───────────────────────────────────────────────────────────── */}
         {activeTab === 'PROFILE' ? (
           <div className="border rounded-lg p-6 shadow-sm space-y-4 font-mono" style={CARD}>
@@ -2515,13 +2517,13 @@ export default function DriverMobileView() {
         {showDeliveryModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[160] p-3 sm:p-4 overflow-y-auto">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDeliveryModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-full max-w-4xl p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-sans text-xs max-h-[92vh] flex flex-col text-[var(--crm-ink-soft)] my-auto">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] w-full max-w-4xl p-5 sm:p-6 rounded-2xl shadow-2xl z-10 text-left space-y-4 font-sans text-xs max-h-[92vh] flex flex-col text-[var(--crm-ink-soft)] my-auto">
               
               {/* Modal Header */}
               <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 shrink-0">
                 <div>
                   <h3 className="text-base sm:text-lg font-bold uppercase tracking-tight text-[var(--crm-heading)] flex items-center gap-2">
-                    <FiCheckCircle className="text-teal-400 animate-pulse" size={18} /> Customer Payment & Delivery Completion
+                    <FiCheckCircle className="text-emerald-500 animate-pulse" size={18} /> Customer Payment & Delivery Completion
                   </h3>
                   <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase block mt-0.5 font-medium">
                     Confirm cargo handover and verify payment collection
@@ -2536,17 +2538,17 @@ export default function DriverMobileView() {
                 </button>
               </div>
 
-              {/* Modal Main Body (2-Column Grid) */}
+              {/* Modal Main Body */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto pr-1 custom-scrollbar flex-1 font-sans">
                 
-                {/* LEFT COLUMN: LEAD DETAILS & DRIVER PROOF (5 Columns) */}
-                <div className="lg:col-span-5 space-y-3.5 border-r lg:border-[var(--crm-line)] lg:pr-4">
+                {/* LEFT COLUMN: LEAD DETAILS & DRIVER PROOF */}
+                <div className="lg:col-span-5 space-y-3.5 border-r-0 lg:border-r lg:border-[var(--crm-line)] lg:pr-4">
                   <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2 font-sans shadow-sm">
                     <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold tracking-wider block font-mono">
-                      LEAD / ORDER ID: <strong className="text-teal-400">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
+                      LEAD / ORDER ID: <strong className="text-blue-400">{deliveringOrder?.dispatchNumber || deliveringOrder?.orderNumber || deliveringOrder?._id}</strong>
                     </span>
                     <h4 className="text-sm text-[var(--crm-heading)] font-bold block">{deliveringOrder?.customerName || 'Client Business'}</h4>
-                    <div className="text-[11px] text-teal-400 font-bold flex items-center gap-1">
+                    <div className="text-[11px] text-blue-400 font-bold flex items-center gap-1">
                       <span>📍</span> {deliveringOrder?.origin || 'Origin'} &rarr; {deliveringOrder?.destination || 'Destination'}
                     </div>
                     <div className="text-[10px] text-[var(--crm-ink-faint)] border-t border-[var(--crm-line)] pt-2 mt-1 font-sans">
@@ -2562,16 +2564,16 @@ export default function DriverMobileView() {
                       placeholder="Enter amount"
                       value={paymentAmountCollected}
                       onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold placeholder-slate-500 transition"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold placeholder-slate-500 transition"
                     />
                     <span className="text-[9px] text-[var(--crm-ink-faint)] block">* Amount collected from customer upon delivery.</span>
                   </div>
 
-                  {/* PROOF OF DRIVER (Selfie / Unloading Point Photo) */}
+                  {/* PROOF OF DRIVER */}
                   <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-1">
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] flex items-center gap-1.5">
-                        <FiCamera size={14} className="text-teal-400" /> Driver Unloading Proof *
+                        <FiCamera size={14} className="text-emerald-400" /> Driver Unloading Proof *
                       </label>
                       <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-rose-950/60 border-rose-800/60 text-rose-400">MANDATORY *</span>
                     </div>
@@ -2585,7 +2587,6 @@ export default function DriverMobileView() {
                       className="w-full px-3 py-2 bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] rounded-xl text-xs cursor-pointer font-sans"
                     />
 
-                    {/* Preview Box directly underneath file upload */}
                     {driverProofPreview ? (
                       <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between gap-2.5 font-sans">
                         <div className="flex items-center gap-2.5">
@@ -2611,7 +2612,7 @@ export default function DriverMobileView() {
                   {/* UPLOAD PAYMENT PROOF RECEIPT */}
                   <div className="p-4 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-xl space-y-2.5">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] flex items-center gap-1.5">
-                      <FiUpload size={14} className="text-teal-400" /> Upload Payment Receipt (Bank / UPI Screenshot)
+                      <FiUpload size={14} className="text-blue-400" /> Upload Payment Receipt (Bank / UPI Screenshot)
                     </label>
 
                     <input
@@ -2634,7 +2635,7 @@ export default function DriverMobileView() {
                             <span className="text-[10px] text-[var(--crm-ink-faint)] truncate block">{paymentProofFile?.name || 'Bank/UPI Slip Verified'}</span>
                           </div>
                         </div>
-                        <span className="px-2.5 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-teal-950/60 border-teal-800/60 text-teal-400 shrink-0">ATTACHED ✓</span>
+                        <span className="px-2.5 py-0.5 text-[9px] font-bold uppercase rounded-md border bg-blue-950/60 border-blue-800/60 text-blue-400 shrink-0">ATTACHED ✓</span>
                       </div>
                     ) : (
                       <span className="text-[9px] text-[var(--crm-ink-faint)] block">
@@ -2650,13 +2651,13 @@ export default function DriverMobileView() {
                       rows={2}
                       value={deliveryNotes}
                       onChange={(e) => setDeliveryNotes(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
+                      className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-blue-500 rounded-xl text-sm outline-none resize-none font-sans text-[var(--crm-heading)] placeholder-slate-500 transition"
                       placeholder="Enter delivery comments or POD receipt details..."
                     />
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: LIVE PAYMENT GATEWAY & MODES (7 Columns) */}
+                {/* RIGHT COLUMN: LIVE PAYMENT GATEWAY & MODES */}
                 <div className="lg:col-span-7 space-y-4 font-sans">
                   
                   {/* Payment Mode Selector Tabs */}
@@ -2666,122 +2667,122 @@ export default function DriverMobileView() {
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('RAZORPAY')}
-                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                        className={`p-2.5 sm:p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RAZORPAY'
-                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
+                            ? 'bg-blue-950/60 border-blue-500 text-blue-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
-                        <span className="text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
+                        <FiCreditCard size={18} className={selectedPaymentMode === 'RAZORPAY' ? 'text-blue-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold">Razorpay (UPI/QR)</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('COD')}
-                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                        className={`p-2.5 sm:p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'COD'
-                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
+                            ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
-                        <span className="text-[10px] uppercase font-bold">Cash on Delivery</span>
+                        <FiDollarSign size={18} className={selectedPaymentMode === 'COD' ? 'text-emerald-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold">Cash on Delivery</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setSelectedPaymentMode('RECEIPT')}
-                        className={`p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                        className={`p-2.5 sm:p-3 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                           selectedPaymentMode === 'RECEIPT'
-                            ? 'bg-teal-950/60 border-teal-500 text-teal-300 font-bold shadow-sm'
+                            ? 'bg-blue-950/60 border-blue-500 text-blue-300 font-bold shadow-sm'
                             : 'bg-[var(--crm-bg)] border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-white'
                         }`}
                       >
-                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-teal-400' : 'text-[var(--crm-ink-faint)]'} />
-                        <span className="text-[10px] uppercase font-bold">Upload Receipt</span>
+                        <FiUpload size={18} className={selectedPaymentMode === 'RECEIPT' ? 'text-blue-400' : 'text-[var(--crm-ink-faint)]'} />
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold">Upload Receipt</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* OPTION 1: RAZORPAY CHECKOUT SDK (LIVE PAYMENT TERMINAL) */}
+                  {/* OPTION 1: RAZORPAY CHECKOUT SDK */}
                   {selectedPaymentMode === 'RAZORPAY' && (
-                    <div className="p-4 border border-[var(--crm-line)] rounded-2xl bg-[var(--crm-bg-sunken)] shadow-xl space-y-4 font-sans text-slate-100">
+                    <div className="p-3 sm:p-4 border border-[var(--crm-line)] rounded-2xl bg-[var(--crm-bg-sunken)] shadow-xl space-y-4 font-sans text-slate-100">
                       
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-left">
                         
-                        {/* LEFT COLUMN: Payment Methods List */}
-                        <div className="md:col-span-6 space-y-2 border-r border-[var(--crm-line)] pr-3 font-sans">
+                        {/* LEFT: Payment Methods List */}
+                        <div className="md:col-span-6 space-y-2 border-b md:border-b-0 md:border-r border-[var(--crm-line)] pb-3 md:pb-0 md:pr-3 font-sans">
                           <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-2 flex items-center gap-1.5">
-                            <FiCreditCard size={13} className="text-teal-400" /> Razorpay Payment Options
+                            <FiCreditCard size={13} className="text-blue-400" /> Razorpay Payment Options
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-blue-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-blue-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 UPI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">UPI (Google Pay, PhonePe, Paytm)</h5>
-                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Pay instantly using any UPI app</p>
+                                <h5 className="text-[11px] font-bold text-[var(--crm-heading)] group-hover:text-blue-300">UPI (Google Pay, PhonePe)</h5>
+                                <p className="text-[9px] text-[var(--crm-ink-faint)]">Pay instantly using UPI app</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-blue-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-blue-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 CARD
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">Credit / Debit / ATM Card</h5>
-                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Visa, MasterCard, RuPay, Maestro</p>
+                                <h5 className="text-[11px] font-bold text-[var(--crm-heading)] group-hover:text-blue-300">Credit / Debit / ATM Card</h5>
+                                <p className="text-[9px] text-[var(--crm-ink-faint)]">Visa, MasterCard, RuPay</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-blue-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-blue-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 EMI
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">EMI & Pay Later</h5>
-                                <p className="text-[10px] text-[var(--crm-ink-faint)]">Credit & Debit Card EMI</p>
+                                <h5 className="text-[11px] font-bold text-[var(--crm-heading)] group-hover:text-blue-300">EMI & Pay Later</h5>
+                                <p className="text-[9px] text-[var(--crm-ink-faint)]">Credit & Debit Card EMI</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
 
                           <div 
                             onClick={() => triggerRazorpayCheckout(deliveringOrder)} 
-                            className="p-3 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-teal-500/60 transition cursor-pointer flex items-center justify-between group"
+                            className="p-2.5 rounded-xl border border-[var(--crm-line)] bg-[var(--crm-bg)] hover:border-blue-500/60 transition cursor-pointer flex items-center justify-between group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-teal-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--crm-bg-raised)] text-blue-400 border border-[var(--crm-line)] font-bold text-[10px] flex items-center justify-center font-mono shrink-0">
                                 BANK
                               </div>
                               <div>
-                                <h5 className="text-xs font-bold text-[var(--crm-heading)] group-hover:text-teal-300">Net Banking</h5>
-                                <p className="text-[10px] text-[var(--crm-ink-faint)]">All Indian Banks (SBI, HDFC, ICICI)</p>
+                                <h5 className="text-[11px] font-bold text-[var(--crm-heading)] group-hover:text-blue-300">Net Banking</h5>
+                                <p className="text-[9px] text-[var(--crm-ink-faint)]">All Indian Banks (SBI, HDFC)</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-teal-300 bg-teal-950/60 border border-teal-800/60 px-2 py-0.5 rounded">PAY</span>
+                            <span className="text-[10px] font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-2 py-0.5 rounded">PAY</span>
                           </div>
                         </div>
 
-                        {/* RIGHT COLUMN: Razorpay Checkout Action Terminal Card */}
+                        {/* RIGHT: Razorpay Checkout Action Terminal Card */}
                         <div className="md:col-span-6 flex flex-col justify-between items-center text-center p-4 bg-[var(--crm-bg)] rounded-xl border border-[var(--crm-line)] font-sans space-y-4">
                           <div className="space-y-1">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--crm-ink-faint)] block">Total Freight Amount</span>
@@ -2800,14 +2801,13 @@ export default function DriverMobileView() {
                               type="button"
                               onClick={() => triggerRazorpayCheckout(deliveringOrder)}
                               disabled={loadingRazorpay}
-                              className="w-full py-3 px-4 text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 bg-teal-950/60 border border-teal-500 text-teal-300 hover:bg-teal-900/60"
+                              className="w-full py-2.5 sm:py-3 px-3 sm:px-4 text-[11px] sm:text-xs uppercase tracking-wider rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-400/40 shadow-sm disabled:opacity-50"
                             >
-                              <FiCreditCard size={16} />
+                              <FiCreditCard size={15} />
                               {loadingRazorpay ? 'Launching Gateway...' : `Launch Razorpay Live (₹${Number(paymentAmountCollected || deliveringOrder?.totalFreightAmount || 0).toLocaleString('en-IN')})`}
                             </button>
                           )}
 
-                          {/* Security Notice Footer */}
                           <div className="w-full pt-2 border-t border-[var(--crm-line)]">
                             <p className="text-[9px] text-[var(--crm-ink-faint)]">
                               * Do not hit back or close this screen until the transaction is complete.
@@ -2823,7 +2823,7 @@ export default function DriverMobileView() {
                   {selectedPaymentMode === 'COD' && (
                     <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiDollarSign className="text-teal-400" /> Cash Handover / Cash on Delivery (COD)
+                        <FiDollarSign className="text-emerald-400" /> Cash Handover / Cash on Delivery (COD)
                       </h4>
                       <p className="text-[10px] text-[var(--crm-ink-faint)]">
                         Customer has paid cash directly to driver upon delivery.
@@ -2835,7 +2835,7 @@ export default function DriverMobileView() {
                           type="number"
                           value={paymentAmountCollected}
                           onChange={(e) => setPaymentAmountCollected(e.target.value)}
-                          className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-[var(--crm-heading)]/40 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold transition"
+                          className="w-full px-3.5 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] focus:border-emerald-500 rounded-xl text-sm outline-none text-[var(--crm-heading)] font-mono font-bold transition"
                         />
                       </div>
                       <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-lg text-[10px] text-[var(--crm-ink-faint)]">
@@ -2848,7 +2848,7 @@ export default function DriverMobileView() {
                   {selectedPaymentMode === 'RECEIPT' && (
                     <div className="p-4 border border-[var(--crm-line)] rounded-xl bg-[var(--crm-bg-sunken)] space-y-3 font-sans">
                       <h4 className="text-xs font-bold uppercase text-[var(--crm-heading)] flex items-center gap-2">
-                        <FiUpload className="text-teal-400" /> Upload Bank / UPI Screenshot Receipt
+                        <FiUpload className="text-blue-400" /> Upload Bank / UPI Screenshot Receipt
                       </h4>
 
                       <input
@@ -2860,7 +2860,7 @@ export default function DriverMobileView() {
                       {paymentProofPreview && (
                         <div className="p-2.5 bg-[var(--crm-bg)] border border-[var(--crm-line)] rounded-xl flex items-center justify-between text-[11px] font-sans">
                           <span className="text-[var(--crm-heading)] truncate">📄 {paymentProofFile?.name || 'Payment Receipt Attached'}</span>
-                          <span className="text-teal-400 font-bold text-[10px]">Attached ✓</span>
+                          <span className="text-blue-400 font-bold text-[10px]">Attached ✓</span>
                         </div>
                       )}
                     </div>
@@ -2871,11 +2871,11 @@ export default function DriverMobileView() {
               </div>
 
               {/* Modal Footer Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-[var(--crm-line)] shrink-0 justify-end">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t border-[var(--crm-line)] shrink-0 justify-end">
                 <button
                   type="button"
                   onClick={() => setShowDeliveryModal(false)}
-                  className="py-2.5 px-4 text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer font-sans"
+                  className="w-full sm:w-auto py-2.5 px-4 text-xs sm:text-sm font-semibold rounded-xl text-[var(--crm-ink-soft)] bg-[var(--crm-bg)] border border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] transition cursor-pointer font-sans"
                 >
                   Cancel
                 </button>
@@ -2883,7 +2883,7 @@ export default function DriverMobileView() {
                   type="button" 
                   onClick={handleConfirmDeliverySubmit} 
                   disabled={submittingDelivery} 
-                  className="py-2.5 px-5 text-sm font-semibold rounded-xl text-[var(--crm-bg-sunken)] bg-[var(--crm-heading)] hover:opacity-90 transition cursor-pointer disabled:opacity-50 flex items-center gap-2 font-sans"
+                  className="w-full sm:w-auto py-2.5 px-4 sm:px-5 text-xs sm:text-sm font-semibold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 font-sans"
                 >
                   <FiCheckCircle size={16} />
                   {submittingDelivery ? 'Updating Status...' : 'Confirm Delivery & Notify Manager'}

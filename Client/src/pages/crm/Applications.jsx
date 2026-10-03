@@ -897,9 +897,9 @@ export default function Applications() {
 
       {/* Assign Task (HR Dept) Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[80] p-0 sm:p-4">
-          <div className="bg-[var(--crm-bg-raised)] rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full max-w-lg border border-blue-500/30 shadow-2xl text-left overflow-y-auto max-h-[92vh] sm:max-h-[90vh]">
-            <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--crm-ink-soft)]/20">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[200] p-3 sm:p-4 overflow-y-auto min-h-screen py-6 sm:py-10" onClick={() => setShowAssignModal(false)}>
+          <div className="bg-[var(--crm-bg-raised)] rounded-2xl p-5 sm:p-6 w-full max-w-lg border border-blue-500/30 shadow-2xl text-left my-auto max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--crm-ink-soft)]/20 shrink-0">
               <div className="flex items-center gap-2">
                 <FiUserPlus className="text-blue-400" size={20} />
                 <h2 className="font-serif text-base sm:text-lg text-[var(--crm-heading)] uppercase tracking-wide">
@@ -908,7 +908,7 @@ export default function Applications() {
               </div>
               <button
                 onClick={() => setShowAssignModal(false)}
-                className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-lg cursor-pointer"
+                className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-lg cursor-pointer p-1 rounded hover:bg-white/10 transition"
               >
                 ✕
               </button>

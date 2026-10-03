@@ -292,7 +292,9 @@ export default function TransportExecutive() {
       // Broadcast custom window event
       window.dispatchEvent(new CustomEvent('ito_dispatch_updated_event', { detail: { tripId: targetId, driverName } }));
 
-      toast.success(`🚚 Driver ${driverName} assigned to Trip ${assignDriverModalTrip.tripId || targetId}! Real-time task sent.`);
+      toast.success(`🚚 Driver ${driverName} assigned to Trip ${assignDriverModalTrip.tripId || targetId}! Real-time task sent.`, {
+        id: `assign_trip_${targetId}_${assignDriverForm.driverId}`
+      });
       setAssignDriverModalTrip(null);
     } catch (err) {
       console.error('Error assigning driver:', err);

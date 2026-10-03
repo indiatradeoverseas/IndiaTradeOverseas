@@ -859,7 +859,12 @@ export default function TransportManager() {
       }
 
       if (!assignedViaTransport) {
-        await leadsApi.assignLead(leadId, { assignedTo: targetUserId });
+        await leadsApi.assignLead(leadId, {
+          assignedTo: targetUserId,
+          driverId: targetUserId,
+          assignedDriverId: targetUserId,
+          driverName: empName
+        });
       }
 
       const targetLeadObj = [...dispatchQueue, ...trips].find(l => l._id === leadId || l.orderNumber === leadId || l.dispatchNumber === leadId) || {};
@@ -896,7 +901,9 @@ export default function TransportManager() {
         }
       } catch (err) { }
 
-      toast.success(`✅ Order assigned directly to ${empName}! Real-time notification sent.`);
+      toast.success(`✅ Order assigned directly to ${empName}! Real-time notification sent.`, {
+        id: `assign_order_direct_${leadId}`
+      });
     } catch (err) {
       console.error('Lead assign error:', err);
       toast.error('Failed to assign lead: ' + (err.response?.data?.message || err.message));

@@ -1311,6 +1311,35 @@ export default function SalesManagerDashboard() {
     });
   };
 
+  const getDispatchPendingLeads = () => {
+    const dispatchStages = [
+      'ORDER_CONFIRMED',
+      'DISPATCH_PENDING',
+      'DISPATCH_PLANNED',
+      'PAYMENT_PENDING',
+      'DOCUMENT_PENDING',
+      'DISPATCH'
+    ];
+    const deliveredStages = [
+      'DELIVERED',
+      'COMPLETED',
+      'CLOSED_WON',
+      'DEAL_WON',
+      'CLOSED_LOST',
+      'DEAL_LOST'
+    ];
+
+    return getFilteredByDate(allLeads).filter(lead => {
+      const stage = String(lead.stage || '').toUpperCase();
+      const crmStatus = String(lead.crmStatus || '').toUpperCase();
+
+      const isConfirmedStage = dispatchStages.includes(stage) || crmStatus === 'WON';
+      const isDeliveredOrClosed = deliveredStages.includes(stage);
+
+      return isConfirmedStage && !isDeliveredOrClosed;
+    });
+  };
+
   const handleSelectAllLeads = (e) => {
     const filteredLeads = getFilteredDivisionLeads();
     if (e.target.checked) {
@@ -1915,16 +1944,49 @@ export default function SalesManagerDashboard() {
                         <h3 className="text-xs uppercase tracking-widest text-[var(--crm-heading)] font-extrabold flex items-center gap-1.5">
                           <FiTruck className="text-blue-500" size={14} /> READY FOR DISPATCH &amp; LOGISTICS
                         </h3>
-                        <button className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded uppercase">
-                          CHECK
-                        </button>
+                        <span className="bg-amber-500/15 border border-amber-500/30 text-amber-500 font-mono text-[9px] font-extrabold px-2.5 py-0.5 rounded uppercase">
+                          {getDispatchPendingLeads().length} ORDERS PENDING
+                        </span>
                       </div>
 
-                      <div className="py-12 border border-dashed border-[var(--crm-line)] rounded-xl flex flex-col items-center justify-center my-3 bg-[var(--crm-bg-sunken)]/30">
-                        <span className="text-2xl mb-1">📦</span>
-                        <span className="text-[10px] font-mono font-bold text-[var(--crm-heading)] uppercase">NO DISPATCH ORDERS PENDING</span>
-                        <span className="text-[8px] text-[var(--crm-ink-faint)] mt-0.5">Confirmed orders ready for logistics will appear here.</span>
-                      </div>
+                      {getDispatchPendingLeads().length === 0 ? (
+                        <div className="py-12 border border-dashed border-[var(--crm-line)] rounded-xl flex flex-col items-center justify-center my-3 bg-[var(--crm-bg-sunken)]/30">
+                          <span className="text-2xl mb-1">📦</span>
+                          <span className="text-[10px] font-mono font-bold text-[var(--crm-heading)] uppercase">NO DISPATCH ORDERS PENDING</span>
+                          <span className="text-[8px] text-[var(--crm-ink-faint)] mt-0.5">Confirmed orders ready for logistics will appear here.</span>
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                          {getDispatchPendingLeads().map((lead) => (
+                            <div
+                              key={lead._id || lead.leadCode}
+                              className="p-3 bg-[var(--crm-bg-sunken)]/60 border border-[var(--crm-line)] rounded-lg flex items-center justify-between gap-3 text-xs font-mono"
+                            >
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-[var(--crm-heading)] truncate font-sans text-xs">
+                                    {lead.customerName || lead.companyName || 'Buyer'}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold shrink-0">
+                                    {lead.stage ? lead.stage.replace(/_/g, ' ') : 'ORDER CONFIRMED'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-[var(--crm-ink-faint)] flex items-center gap-3">
+                                  <span>ID: <strong className="text-[var(--crm-heading)]">{lead.leadCode || 'N/A'}</strong></span>
+                                  <span>Cat: <strong className="text-blue-400">{lead.productCategory || 'STONE'}</strong></span>
+                                  {lead.quantity && <span>Qty: <strong className="text-emerald-400">{lead.quantity}</strong></span>}
+                                </div>
+                              </div>
+                              <Link
+                                to={`/crm/leads/${lead._id}`}
+                                className="px-2.5 py-1 text-[9px] font-extrabold uppercase bg-blue-600 hover:bg-blue-700 text-white rounded transition shrink-0"
+                              >
+                                View Order
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -3414,7 +3476,7 @@ export default function SalesManagerDashboard() {
 
       {/* DOCUMENT APPROVAL DIALOG MODAL */}
       {actioningDoc && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[200] p-4">
           <motion.div
             initial={{ scale: 0.97, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -3477,22 +3539,22 @@ export default function SalesManagerDashboard() {
 
       {/* ─── ASSIGN TASK MODAL ─── */}
       {showTaskModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowTaskModal(false)}>
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto min-h-screen py-6 sm:py-10" onClick={() => setShowTaskModal(false)}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl p-6 shadow-2xl w-full max-w-lg text-left"
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-2xl w-full max-w-lg shadow-2xl relative text-left my-auto max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center border-b border-[var(--crm-line)] pb-3 mb-4">
-              <h2 className="text-lg font-bold text-[var(--crm-heading)] flex items-center gap-2">
+            <div className="p-4 sm:p-5 flex justify-between items-center border-b border-[var(--crm-line)] shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--crm-heading)] flex items-center gap-2">
                 <FiCheckSquare className="text-teal-400" size={18} /> Assign Task to Executive
               </h2>
-              <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-base cursor-pointer">✕</button>
+              <button onClick={() => setShowTaskModal(false)} className="text-[var(--crm-ink-faint)] hover:text-white font-bold text-base cursor-pointer p-1 rounded hover:bg-white/10 transition">✕</button>
             </div>
 
-            <form onSubmit={handleTaskSubmit} className="space-y-4 text-xs font-medium">
+            <form onSubmit={handleTaskSubmit} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4 text-xs font-medium custom-scrollbar">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Task Title *</label>
                 <input
@@ -3516,7 +3578,7 @@ export default function SalesManagerDashboard() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Assign To *</label>
                   <select
@@ -3543,7 +3605,7 @@ export default function SalesManagerDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--crm-ink-faint)] mb-1">Priority</label>
                   <select
@@ -3598,7 +3660,7 @@ export default function SalesManagerDashboard() {
                 />
               </div>
 
-              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)]">
+              <div className="flex space-x-3 pt-4 border-t border-[var(--crm-line)] shrink-0">
                 <button
                   type="submit"
                   disabled={submittingTask}
@@ -3621,21 +3683,21 @@ export default function SalesManagerDashboard() {
 
       {/* ─── SEND FILE MODAL ─── */}
       {showFileModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowFileModal(false)}>
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={() => setShowFileModal(false)}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-md"
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-md my-auto max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-[var(--crm-line)]">
+            <div className="p-4 sm:p-5 border-b border-[var(--crm-line)] shrink-0">
               <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--crm-heading)] flex items-center gap-2">
                 <FiUpload className="text-indigo-500" size={16} /> Send File to Executive
               </h2>
             </div>
 
-            <form onSubmit={handleFileShareSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleFileShareSubmit} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4 custom-scrollbar">
               <div>
                 <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5">Send To *</label>
                 <select
@@ -3673,7 +3735,7 @@ export default function SalesManagerDashboard() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 shrink-0">
                 <button
                   type="submit"
                   disabled={submittingFile}
@@ -3695,22 +3757,22 @@ export default function SalesManagerDashboard() {
       )}
       {/* ─── SET MONTHLY TARGET MODAL ─── */}
       {showTargetModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowTargetModal(false)}>
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={() => setShowTargetModal(false)}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-md"
+            className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-xl shadow-xl w-full max-w-md my-auto max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-[var(--crm-line)] text-left font-sans">
+            <div className="p-4 sm:p-6 border-b border-[var(--crm-line)] text-left font-sans shrink-0">
               <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--crm-heading)] flex items-center gap-2">
                 🎯 Configure Monthly Sales Target
               </h2>
               <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1 uppercase font-mono">For {selectedEmpName}</p>
             </div>
 
-            <form onSubmit={handleSetTargetSubmit} className="p-6 space-y-4 text-left font-sans">
+            <form onSubmit={handleSetTargetSubmit} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4 text-left font-sans custom-scrollbar">
               <div>
                 <label className="block text-[9px] uppercase tracking-wider text-[var(--crm-ink-faint)] font-bold mb-1.5 font-mono">Target Value (INR) *</label>
                 <input
@@ -3762,7 +3824,7 @@ export default function SalesManagerDashboard() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 shrink-0">
                 <button
                   type="submit"
                   disabled={submittingTarget}
@@ -3785,7 +3847,7 @@ export default function SalesManagerDashboard() {
 
       {/* CREATE SALES TRIAL EXECUTIVE ACCOUNT MODAL */}
       {showCreateTrialModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[200] p-4">
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

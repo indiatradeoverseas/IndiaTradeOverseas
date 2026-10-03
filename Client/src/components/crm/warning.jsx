@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   FiAlertTriangle, FiPrinter, FiSend, FiX, FiCheck, FiUser,
-  FiCalendar, FiFileText, FiShield, FiClock
+  FiCalendar, FiFileText, FiShield, FiClock, FiUpload, FiTrash2
 } from 'react-icons/fi';
 import { employeesApi } from '../../api/employees';
 
@@ -17,6 +17,7 @@ export default function WarningLetterModal({
   const [selectedEmployee, setSelectedEmployee] = useState(initialEmployee);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('PREVIEW'); // Default to PREVIEW per user request
+  const [signatureImage, setSignatureImage] = useState(null);
 
   const todayStr = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -34,6 +35,9 @@ export default function WarningLetterModal({
     incident2: 'Previous verbal reminders issued regarding punctuality and daily task submissions.',
     incident3: 'Mandatory company policy and operational reporting standards were not followed.',
     improvementDays: '7',
+    signatoryType: 'FOUNDER', // Default to single signatory
+    signatoryName: 'Md Ramiz Raza Khan',
+    signatoryTitle: 'Founder & Proprietor',
     founderName: 'Md Ramiz Raza Khan',
     founderTitle: 'Founder & Proprietor',
     hrSignatory: 'HR Manager / Authorized Signatory'
@@ -59,6 +63,36 @@ export default function WarningLetterModal({
     return parts.length > 1 ? parts[parts.length - 1] : parts[0];
   };
 
+  const handleSignatureUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file (PNG, JPG, SVG).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Signature file size must be less than 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSignatureImage(reader.result);
+      toast.success('Signature image uploaded successfully!');
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read signature image file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveSignature = () => {
+    setSignatureImage(null);
+    toast.success('Signature removed.');
+  };
+
   const handleSendLetter = async () => {
     if (!selectedEmployee) {
       toast.error('Please select an employee first.');
@@ -67,6 +101,10 @@ export default function WarningLetterModal({
 
     setSubmitting(true);
     try {
+      const signoffText = formData.signatoryType === 'BOTH'
+        ? `${formData.founderName || 'Md Ramiz Raza Khan'}\n${formData.founderTitle || 'Founder & Proprietor'}\n\n${formData.hrSignatory || 'HR Manager / Authorized Signatory'}`
+        : `${formData.signatoryName || 'Md Ramiz Raza Khan'}\n${formData.signatoryTitle || 'Founder & Proprietor'}`;
+
       const formattedBody = `
 Dear Mr./Ms. ${getLastName(empName)},
 
@@ -90,10 +128,7 @@ Sincerely,
 
 For India Trade Overseas Private Limited
 
-${formData.founderName}
-${formData.founderTitle}
-
-${formData.hrSignatory}
+${signoffText}
       `.trim();
 
       const payload = {
@@ -107,6 +142,9 @@ ${formData.hrSignatory}
           employeeId: empId,
           department: empDept,
           position: empPosition,
+          signatoryName: formData.signatoryName || 'Md Ramiz Raza Khan',
+          signatoryTitle: formData.signatoryTitle || 'Founder & Proprietor',
+          signatureImage: signatureImage || '',
           formattedBody
         }
       };
@@ -152,6 +190,11 @@ ${formData.hrSignatory}
             .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
             .sig-block { width: 45%; }
             .ack-box { margin-top: 50px; border-top: 1px dashed #94a3b8; padding-top: 20px; }
+            img { max-height: 55px; max-width: 200px; object-fit: contain; }
+            .no-print, .print-hide, .print-hidden { display: none !important; }
+            @media print {
+              .no-print, .print-hide, .print-hidden, button, label { display: none !important; }
+            }
           </style>
         </head>
         <body>
@@ -169,35 +212,35 @@ ${formData.hrSignatory}
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs font-sans overflow-y-auto">
+      <div className="fixed inset-0 z-[99999] flex items-start justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs font-sans overflow-y-auto pt-16 sm:pt-20 pb-4 sm:pb-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className="w-full max-w-4xl border rounded-md shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+          className="w-full max-w-4xl border rounded-lg shadow-2xl flex flex-col max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-6rem)] overflow-hidden"
           style={{ background: 'var(--crm-bg-raised)', borderColor: 'var(--crm-line)' }}
         >
           {/* Header Bar */}
-          <div className="p-4 border-b flex items-center justify-between flex-wrap gap-2" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500">
-                <FiAlertTriangle size={18} />
+          <div className="p-2.5 sm:p-4 border-b flex items-center justify-between gap-2 shrink-0" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 sm:p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 shrink-0">
+                <FiAlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
-                  Official Warning Letter Generator
+              <div className="min-w-0">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[var(--crm-heading)] truncate">
+                  Warning Letter Generator
                 </h2>
-                <p className="text-[10px] text-[var(--crm-ink-faint)]">
+                <p className="text-[9px] sm:text-[10px] text-[var(--crm-ink-faint)] hidden sm:block truncate">
                   Dispatches official letter to employee email & sends instant CRM notification
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex bg-[var(--crm-bg)] p-0.5 rounded border border-[var(--crm-line)]">
                 <button
                   onClick={() => setActiveTab('FORM')}
-                  className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1 text-[9px] sm:text-[10px] uppercase font-bold rounded transition-colors whitespace-nowrap ${
                     activeTab === 'FORM'
                       ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]'
                       : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
@@ -207,18 +250,19 @@ ${formData.hrSignatory}
                 </button>
                 <button
                   onClick={() => setActiveTab('PREVIEW')}
-                  className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1 text-[9px] sm:text-[10px] uppercase font-bold rounded transition-colors whitespace-nowrap ${
                     activeTab === 'PREVIEW'
                       ? 'bg-[var(--crm-accent)] text-[var(--crm-bg)]'
                       : 'text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
                   }`}
                 >
-                  Letterhead Preview
+                  Preview
                 </button>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-sm hover:bg-[var(--crm-bg)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition-colors"
+                className="p-1.5 rounded hover:bg-slate-700/30 text-[var(--crm-heading)] transition-colors shrink-0"
+                title="Close"
               >
                 <FiX size={16} />
               </button>
@@ -226,11 +270,11 @@ ${formData.hrSignatory}
           </div>
 
           {/* Modal Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
             
             {/* Employee Selection row if no initial employee */}
             {allEmployees.length > 0 && (
-              <div className="p-3 border rounded-sm bg-[var(--crm-bg-sunken)] space-y-1.5" style={{ borderColor: 'var(--crm-line)' }}>
+              <div className="p-2.5 sm:p-3 border rounded-sm bg-[var(--crm-bg-sunken)] space-y-1" style={{ borderColor: 'var(--crm-line)' }}>
                 <label className="block text-[9px] uppercase tracking-wider font-bold text-[var(--crm-ink-faint)]">
                   Select Recipient Employee *
                 </label>
@@ -240,7 +284,7 @@ ${formData.hrSignatory}
                     const found = allEmployees.find(emp => String(emp._id) === String(e.target.value));
                     setSelectedEmployee(found || null);
                   }}
-                  className="w-full text-xs p-2 rounded border outline-none bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-line)]"
+                  className="w-full text-xs p-1.5 sm:p-2 rounded border outline-none bg-[var(--crm-bg)] text-[var(--crm-heading)] border-[var(--crm-line)] truncate"
                 >
                   <option value="">Choose employee...</option>
                   {allEmployees.map(emp => (
@@ -253,7 +297,7 @@ ${formData.hrSignatory}
             )}
 
             {activeTab === 'FORM' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs">
                 <div>
                   <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">Ref. Number</label>
                   <input
@@ -319,7 +363,7 @@ ${formData.hrSignatory}
                   </div>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">Measurable Improvement Period (Days) *</label>
                   <input
                     type="number"
@@ -329,42 +373,156 @@ ${formData.hrSignatory}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">Founder & Proprietor Name</label>
-                  <input
-                    type="text"
-                    value={formData.founderName}
-                    onChange={(e) => setFormData({ ...formData, founderName: e.target.value })}
-                    className="w-full p-2 rounded border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]"
-                  />
+                {/* Signatory & Digital Signature Control Section */}
+                <div className="md:col-span-2 pt-3 border-t border-[var(--crm-line)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[10px] uppercase tracking-wider font-bold text-[var(--crm-accent)] flex items-center gap-1.5">
+                      <FiShield size={13} /> Signatory & Signature Settings
+                    </span>
+                    {signatureImage && (
+                      <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <FiCheck size={12} /> Signature Attached
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">
+                        Signatory Selection *
+                      </label>
+                      <select
+                        value={formData.signatoryType || 'FOUNDER'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'FOUNDER') {
+                            setFormData(prev => ({
+                              ...prev,
+                              signatoryType: 'FOUNDER',
+                              signatoryName: 'Md Ramiz Raza Khan',
+                              signatoryTitle: 'Founder & Proprietor'
+                            }));
+                          } else if (val === 'HR') {
+                            setFormData(prev => ({
+                              ...prev,
+                              signatoryType: 'HR',
+                              signatoryName: 'HR Manager / Authorized Signatory',
+                              signatoryTitle: 'Authorized Signatory'
+                            }));
+                          } else if (val === 'BOTH') {
+                            setFormData(prev => ({
+                              ...prev,
+                              signatoryType: 'BOTH',
+                              signatoryName: 'Md Ramiz Raza Khan',
+                              signatoryTitle: 'Founder & Proprietor'
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              signatoryType: 'CUSTOM'
+                            }));
+                          }
+                        }}
+                        className="w-full p-2 rounded border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)] text-xs font-semibold outline-none"
+                      >
+                        <option value="FOUNDER">Founder & Proprietor (Md Ramiz Raza Khan) [Single Signatory]</option>
+                        <option value="HR">HR Manager / Authorized Signatory [Single Signatory]</option>
+                        <option value="CUSTOM">Custom Signatory Name & Title [Single Signatory]</option>
+                        <option value="BOTH">Show Both Signatories (Founder & HR)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">
+                        Upload Digital Signature (PNG/JPG)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-1.5 rounded border border-dashed text-xs font-medium text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg)] transition-colors border-[var(--crm-line)]">
+                          <FiUpload size={14} className="text-[var(--crm-accent)]" />
+                          <span>{signatureImage ? 'Change Signature' : 'Upload Signature'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleSignatureUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {signatureImage && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveSignature}
+                            className="px-2.5 py-1.5 rounded text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 transition-colors flex items-center gap-1"
+                            title="Remove signature"
+                          >
+                            <FiTrash2 size={13} /> Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {formData.signatoryType === 'CUSTOM' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">Custom Signatory Name</label>
+                        <input
+                          type="text"
+                          value={formData.signatoryName || ''}
+                          onChange={(e) => setFormData({ ...formData, signatoryName: e.target.value })}
+                          placeholder="e.g. John Doe"
+                          className="w-full p-2 rounded border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] uppercase tracking-wider font-bold mb-1 text-[var(--crm-ink-faint)]">Custom Signatory Title</label>
+                        <input
+                          type="text"
+                          value={formData.signatoryTitle || ''}
+                          onChange={(e) => setFormData({ ...formData, signatoryTitle: e.target.value })}
+                          placeholder="e.g. Director"
+                          className="w-full p-2 rounded border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] border-[var(--crm-line)]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {signatureImage && (
+                    <div className="p-2.5 border rounded bg-[var(--crm-bg-sunken)] border-[var(--crm-line)] flex items-center gap-3">
+                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)]">Attached Signature Preview:</span>
+                      <div className="h-10 px-3 py-1 bg-white rounded border border-slate-200 flex items-center justify-center">
+                        <img src={signatureImage} alt="Signature Preview" className="h-full max-w-[160px] object-contain" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               /* PREVIEW TAB */
-              <div className="border rounded bg-white text-slate-900 p-6 sm:p-10 font-sans shadow-md space-y-6" ref={printRef}>
+              <div className="border rounded-lg bg-white text-slate-900 p-4 sm:p-6 md:p-10 font-sans shadow-md space-y-4 sm:space-y-6 text-xs sm:text-sm overflow-x-auto" ref={printRef}>
                 {/* Official Letterhead Header */}
-                <div className="text-center border-b-2 border-sky-600 pb-4">
-                  <h1 className="text-xl sm:text-2xl font-black uppercase text-slate-900 tracking-wider">
+                <div className="text-center border-b-2 border-sky-600 pb-3 sm:pb-4">
+                  <h1 className="text-base sm:text-xl md:text-2xl font-black uppercase text-slate-900 tracking-wider">
                     INDIA TRADE OVERSEAS PRIVATE LIMITED
                   </h1>
-                  <p className="text-xs font-semibold italic text-sky-700 mt-1">
+                  <p className="text-[10px] sm:text-xs font-semibold italic text-sky-700 mt-0.5 sm:mt-1">
                     Where Quality Meets Global Demand
                   </p>
                 </div>
 
                 {/* Letter Title */}
                 <div className="text-center">
-                  <h2 className="text-base font-bold uppercase text-red-600 tracking-widest border-b border-red-200 inline-block pb-1">
+                  <h2 className="text-xs sm:text-sm md:text-base font-bold uppercase text-red-600 tracking-widest border-b border-red-200 inline-block pb-1">
                     WARNING LETTER
                   </h2>
                 </div>
 
                 {/* Letter Metadata */}
-                <div className="flex justify-between items-start text-xs text-slate-700 font-mono border-b border-slate-100 pb-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-[10px] sm:text-xs text-slate-700 font-mono border-b border-slate-100 pb-2.5 gap-1">
                   <div>
                     <p><strong>Ref. No.:</strong> {formData.refNo}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     <p><strong>Date:</strong> {formData.date}</p>
                   </div>
                 </div>
@@ -384,7 +542,7 @@ ${formData.hrSignatory}
                 </div>
 
                 {/* Letter Body */}
-                <div className="text-xs leading-relaxed text-slate-800 space-y-3">
+                <div className="text-xs sm:text-sm leading-relaxed text-slate-800 space-y-3">
                   <p>Dear Mr./Ms. {getLastName(empName)},</p>
                   
                   <p>
@@ -421,29 +579,65 @@ ${formData.hrSignatory}
                   <p className="text-xs font-semibold text-slate-800">Sincerely,</p>
                   <p className="text-xs font-bold text-slate-900 mt-1">For India Trade Overseas Private Limited</p>
 
-                  <div className="grid grid-cols-2 gap-8 mt-12 text-xs text-slate-800">
-                    <div>
-                      <div className="border-t border-slate-400 pt-1 font-bold">
-                        {formData.founderName}
+                  {formData.signatoryType === 'BOTH' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 mt-6 sm:mt-10 text-xs text-slate-800">
+                      <div>
+                        {signatureImage && (
+                          <div className="mb-1.5 h-12 flex items-end">
+                            <img src={signatureImage} alt="Signature" className="max-h-12 max-w-[160px] object-contain" />
+                          </div>
+                        )}
+                        <div className="border-t border-slate-400 pt-1 font-bold">
+                          {formData.founderName || 'Md Ramiz Raza Khan'}
+                        </div>
+                        <div className="text-[10px] text-slate-600">{formData.founderTitle || 'Founder & Proprietor'}</div>
                       </div>
-                      <div className="text-[10px] text-slate-600">{formData.founderTitle}</div>
-                    </div>
-                    <div>
-                      <div className="border-t border-slate-400 pt-1 font-bold">
-                        {formData.hrSignatory}
+                      <div>
+                        <div className="border-t border-slate-400 pt-1 font-bold">
+                          {formData.hrSignatory || 'HR Manager / Authorized Signatory'}
+                        </div>
+                        <div className="text-[10px] text-slate-600">Authorized Signatory</div>
                       </div>
-                      <div className="text-[10px] text-slate-600">Authorized Signatory</div>
                     </div>
-                  </div>
+                  ) : (
+                    /* SINGLE SIGNATORY DISPLAY (Default) */
+                    <div className="flex justify-start mt-6 sm:mt-8 text-xs text-slate-800">
+                      <div className="w-full sm:w-auto min-w-0 sm:min-w-[220px] max-w-[280px]">
+                        {signatureImage ? (
+                          <div className="mb-1.5 h-14 flex items-end">
+                            <img src={signatureImage} alt="Authorized Signature" className="max-h-14 max-w-[180px] object-contain" />
+                          </div>
+                        ) : (
+                          <div className="mb-2 h-7 flex items-center print-hidden">
+                            <label className="cursor-pointer text-[10px] text-sky-600 hover:text-sky-700 font-semibold flex items-center gap-1 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                              <FiUpload size={11} /> Upload Digital Signature Image
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleSignatureUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        )}
+                        <div className="border-t border-slate-400 pt-1 font-bold text-slate-900">
+                          {formData.signatoryName || 'Md Ramiz Raza Khan'}
+                        </div>
+                        <div className="text-[10px] text-slate-600">
+                          {formData.signatoryTitle || 'Founder & Proprietor'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Employee Acknowledgement */}
-                <div className="mt-8 border-t-2 border-dashed border-slate-300 pt-4 text-xs space-y-3">
+                <div className="mt-6 sm:mt-8 border-t-2 border-dashed border-slate-300 pt-4 text-xs space-y-3">
                   <h3 className="font-bold uppercase tracking-wider text-slate-900">Employee Acknowledgement</h3>
                   <p className="text-slate-700">
                     I, <strong>{empName}</strong>, acknowledge that I have received and understood this warning letter.
                   </p>
-                  <div className="grid grid-cols-2 gap-8 pt-6 text-slate-700">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-8 pt-4 sm:pt-6 text-slate-700">
                     <div>Employee Signature: ________________________</div>
                     <div>Date: ________________________</div>
                   </div>
@@ -454,28 +648,28 @@ ${formData.hrSignatory}
           </div>
 
           {/* Footer Bar / Action Buttons */}
-          <div className="p-4 border-t flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
+          <div className="p-2.5 sm:p-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
             <button
               onClick={handlePrint}
-              className="px-4 py-2 text-xs uppercase font-bold rounded border flex items-center gap-1.5 transition-colors bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs uppercase font-bold rounded border flex items-center justify-center gap-1.5 transition-colors bg-blue-200 text-blue-950 border-blue-300 hover:bg-blue-300 w-full sm:w-auto"
             >
               <FiPrinter size={14} /> Print / Download PDF
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-xs uppercase font-bold rounded border text-[var(--crm-heading)] border-[var(--crm-line)] hover:bg-[var(--crm-bg)]"
+                className="flex-1 sm:flex-initial px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs uppercase font-bold rounded border text-[var(--crm-heading)] border-[var(--crm-line)] hover:bg-[var(--crm-bg)] text-center"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSendLetter}
                 disabled={submitting || !selectedEmployee}
-                className="px-5 py-2 text-xs font-bold uppercase rounded bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 shadow-md disabled:opacity-50"
+                className="flex-1 sm:flex-initial px-4 py-1.5 sm:px-5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase rounded bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50 text-center whitespace-nowrap"
               >
                 <FiSend size={14} />
-                {submitting ? 'Dispatching Mail & Notif...' : 'Send Mail & Notification'}
+                {submitting ? 'Dispatching...' : 'Send Mail & Notification'}
               </button>
             </div>
           </div>
@@ -484,3 +678,5 @@ ${formData.hrSignatory}
     </AnimatePresence>
   );
 }
+
+

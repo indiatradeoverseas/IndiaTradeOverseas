@@ -331,14 +331,15 @@ async function listLeads(user, query = {}) {
 
       const promises = [];
       if (user.email) {
-        const emailRegex = { $regex: new RegExp('^' + user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') };
-        promises.push(Employee.findOne({ email: emailRegex }));
-        promises.push(SalesTrialUser.findOne({ email: emailRegex }));
+        const cleanEmail = user.email.trim().toLowerCase();
+        const emailVariants = Array.from(new Set([user.email, cleanEmail])).filter(Boolean);
+        promises.push(Employee.findOne({ email: { $in: emailVariants } }).lean());
+        promises.push(SalesTrialUser.findOne({ email: { $in: emailVariants } }).lean());
       }
       if (user.trialId) {
-        promises.push(SalesTrialUser.findOne({ trialId: user.trialId }));
+        promises.push(SalesTrialUser.findOne({ trialId: user.trialId }).lean());
       } else if (user._id) {
-        promises.push(SalesTrialUser.findById(user._id));
+        promises.push(SalesTrialUser.findById(user._id).lean());
       }
 
       const results = await Promise.all(promises);
@@ -1468,8 +1469,24 @@ async function bulkImportLeads(leadsArray, user) {
         ? rowPriority
         : aiPriority;
 
+      const rawCustomId = String(
+        row.identifier ||
+        row.Identifier ||
+        row.leadCode ||
+        row.LeadCode ||
+        row.refNo ||
+        row.RefNo ||
+        row.referenceNumber ||
+        row.ReferenceNumber ||
+        row['Ref Number'] ||
+        row['Identifier'] ||
+        row['Ref No'] ||
+        ''
+      ).trim();
+
       validPreparedRows.push({
         index: i,
+        customIdentifier: rawCustomId,
         customerName,
         companyName,
         companyNameHash,
@@ -1526,7 +1543,8 @@ async function bulkImportLeads(leadsArray, user) {
   for (let idx = 0; idx < validPreparedRows.length; idx++) {
     const item = validPreparedRows[idx];
     const random = Math.floor(Math.random() * 100000) + idx;
-    const leadCode = `LD-${timestamp}-${random}`;
+    const defaultAutoCode = `LD-${timestamp}-${random}`;
+    const leadCode = item.customIdentifier ? item.customIdentifier : defaultAutoCode;
     const leadId = new mongoose.Types.ObjectId();
 
     const comboKey = (item.phoneHash && item.emailHash && item.productCategory)

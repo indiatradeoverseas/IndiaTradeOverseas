@@ -530,9 +530,9 @@ export default function LeadDetail() {
         <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
           <button
             onClick={() => setShowSalesCalc(true)}
-            className="bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer shadow-md"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 text-[11px] font-bold uppercase tracking-widest h-[42px] px-4 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer shadow-md shadow-emerald-600/20"
           >
-            <BsCalculator size={15} /> <span>Sales Calculator 🧮</span>
+            <BsCalculator size={15} /> <span>Sales Calculator</span>
           </button>
           {user?.role === 'ADMIN' && (
             <button onClick={handleDeleteLead} className="flex-1 md:flex-none justify-center bg-[var(--crm-danger-bg)] text-[var(--crm-danger)] border border-[var(--crm-danger)]/30 text-[11px] font-bold font-mono uppercase tracking-widest h-[42px] px-4 rounded-sm flex items-center space-x-1.5 transition-all cursor-pointer hover:bg-[var(--crm-danger-bg)]">
@@ -702,9 +702,9 @@ export default function LeadDetail() {
               <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
                 Lead Temperature Status:
                 <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'bg-zinc-900 text-zinc-300 border-zinc-700 shadow-sm' :
-                    lead.priority === 'HOT' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
-                      lead.priority === 'WARM' ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
-                        'bg-cyan-950/80 text-cyan-400 border-cyan-800/60'
+                  lead.priority === 'HOT' ? 'bg-red-900 text-red-400 ' :
+                    lead.priority === 'WARM' ? 'bg-amber-500 text-white ' :
+                      'bg-blue-900 text-white '
                   }`}>
                   {lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'DEAD 💀' : lead.priority === 'HOT' ? 'HOT 🔥' : lead.priority === 'WARM' ? 'WARM ⚡' : 'COLD ❄️'}
                 </span>
@@ -729,10 +729,10 @@ export default function LeadDetail() {
               <button
                 type="button"
                 onClick={() => setShowSalesCalc(true)}
-                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white border border-teal-500/50 text-xs font-bold rounded-sm flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 text-xs font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-600/20"
               >
                 <BsCalculator size={13} />
-                <span>Calculator 🧮</span>
+                <span>Calculator</span>
               </button>
             </div>
           </div>
@@ -843,9 +843,9 @@ export default function LeadDetail() {
                         }
                       }}
                       disabled={!isClickable && !canOpenRequirementCaptured && stage !== 'FOLLOW_UP'}
-                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-mono ${stage === 'FOLLOW_UP' && !isCurrent
-                          ? "border-rose-500/50 bg-rose-950/20 text-rose-300 font-bold cursor-pointer hover:border-rose-400"
-                          : currentStyle
+                      className={`flex flex-col items-center justify-center p-2.5 border text-center transition-all duration-150 flex-1 mx-1 rounded-sm select-none focus:outline-none min-w-[90px] font-sans ${stage === 'FOLLOW_UP' && !isCurrent
+                        ? "border-blue-500 text-blue-600 font-extrabold cursor-pointer shadow-sm"
+                        : currentStyle
                         }`}
                       title={stage === 'FOLLOW_UP' ? 'Click to open Call Recording Form & set Follow Up' : stage === 'LOI_PO_PENDING' ? 'Click to open LOI Upload Form' : details.label}
                     >
@@ -902,12 +902,11 @@ export default function LeadDetail() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowActivityModal(true)}
-                className="bg-teal-950/80 hover:bg-teal-900 text-teal-300 border border-teal-800/50 text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-sm flex items-center gap-1.5 transition cursor-pointer shadow-sm font-mono"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-600/20 font-sans"
               >
-                <FiPlus size={12} />
-                <span>+ Log Manual Report / Activity</span>
+                <FiPlus size={13} />
+                <span> Log Manual Report / Activity</span>
               </button>
-              <FiCompass className="text-[var(--crm-ink-faint)]" size={15} />
             </div>
           </div>
           <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
@@ -950,7 +949,7 @@ export default function LeadDetail() {
 
                     {/* Performer / Task Executor Badge */}
                     <div className="flex flex-wrap items-center gap-3 mt-2.5 pt-2 border-t border-[var(--crm-ink-soft)]/10 text-[10px]">
-                      <div className="flex items-center gap-1 text-sky-400 font-bold bg-sky-950/60 border border-sky-800/40 px-2 py-0.5 rounded-sm">
+                      <div className="flex items-center gap-1 text-white font-bold bg-blue-900 px-2 py-0.5 rounded-sm">
                         <FiUser size={11} className="text-sky-400" />
                         <span>Executed By: <strong className="text-sky-300">{performerName}</strong> {performerRole ? `(${performerRole.replace(/_/g, ' ')})` : ''}</span>
                       </div>
@@ -1100,7 +1099,7 @@ export default function LeadDetail() {
           <div className="fixed inset-0 bg-[var(--crm-bg-sunken)]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
             <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-lg relative text-[var(--crm-ink-soft)] text-left">
               <div className="flex items-center justify-between border-b border-[var(--crm-ink-soft)]/10 pb-4 mb-4">
-                <h3 className="text-sm font-mono font-bold text-teal-400 flex items-center gap-2 uppercase tracking-wider">
+                <h3 className="text-sm font-mono font-bold text-blue-600 flex items-center gap-2 uppercase tracking-wider">
                   <FiFileText size={16} /> Upload LOI (Letter of Intent)
                 </h3>
                 <button onClick={() => setShowLOIModal(false)} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] transition cursor-pointer">
@@ -1130,15 +1129,13 @@ export default function LeadDetail() {
                   ></textarea>
                 </div>
 
-                <div className="p-3 bg-teal-950/30 border border-teal-900/40 rounded-sm text-[10px] text-teal-300/80">
-                  ☁️ LOI will be saved on server & automatically backed up to Google Drive for Sales Manager verification.
-                </div>
+                
 
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     type="submit"
                     disabled={uploadingLOI}
-                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold uppercase py-2.5 text-[10px] tracking-widest rounded-sm transition cursor-pointer disabled:opacity-50"
+                    className="flex-1 bg-green-600 hover:bg-green-400 text-white font-bold uppercase py-2.5 text-[10px] tracking-widest rounded-sm transition cursor-pointer disabled:opacity-50"
                   >
                     {uploadingLOI ? 'Uploading...' : 'Confirm Upload LOI'}
                   </button>
