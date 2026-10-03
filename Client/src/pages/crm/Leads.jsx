@@ -2792,7 +2792,7 @@ export default function Leads() {
                                 {isManagerOrAdmin && (
                                   <button
                                     onClick={(e) => handleDeleteSingleLead(lead._id, e)}
-                                    className="p-1.5 bg-red-950 border border-rose-800/60 text-white hover:bg-rose-900 hover:text-rose-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
+                                    className="p-1.5 bg-red-950 border border-red-800/60 text-white hover:bg-red-900 hover:text-red-200 transition-all rounded-sm cursor-pointer shadow-sm inline-flex items-center justify-center"
                                     title="Delete Lead Node"
                                   >
                                     <FiTrash2 size={13} />
@@ -3182,18 +3182,18 @@ export default function Leads() {
       {/* Excel Spreadsheet / Image Ingestion Modal */}
       <AnimatePresence>
         {showImportModal && (
-          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-2 pb-20 sm:p-4">
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-sm p-6 w-full max-w-4xl shadow-2xl relative text-[var(--crm-ink-soft)] flex flex-col max-h-[90vh]"
+              className="bg-[var(--crm-bg-raised)] border border-[var(--crm-ink-soft)]/15 rounded-lg sm:rounded-sm p-3 sm:p-6 w-full max-w-4xl shadow-2xl relative text-[var(--crm-ink-soft)] flex flex-col max-h-[95vh] sm:max-h-[90vh]"
             >
-              <div className="flex justify-between items-center mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-4 text-left shrink-0">
+              <div className="flex justify-between items-center mb-3 sm:mb-5 border-b border-[var(--crm-ink-soft)]/10 pb-3 sm:pb-4 text-left shrink-0">
                 <div>
-                  <h2 className="text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet / PDF / Image Bulk Ingestion</h2>
-                  <p className="text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-1">Upload CSV / Excel / PDF / Photo files to parse and ingest lead records</p>
+                  <h2 className="text-sm sm:text-base font-serif font-normal uppercase text-[var(--crm-heading)]">Spreadsheet / PDF / Image Bulk Ingestion</h2>
+                  <p className="text-[8px] sm:text-[9px] text-[var(--crm-ink-faint)] tracking-widest uppercase font-mono font-bold mt-0.5 sm:mt-1">Upload CSV / Excel / PDF / Photo files to parse and ingest lead records</p>
                 </div>
                 <button type="button" onClick={() => { setShowImportModal(false); setParsedRows([]); setColumnMappings({}); setUploadedImage(null); setImageEditMode(false); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }} className="text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] p-1 rounded-sm cursor-pointer">
                   <FiX size={16} />
@@ -3204,17 +3204,17 @@ export default function Leads() {
               {uploadedImage && imageEditMode ? (
                 <div className="flex-1 flex flex-col space-y-4 overflow-hidden text-left">
                   {/* Image editing toolbar */}
-                  <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
-                    <div className="flex items-center gap-2">
-                      <FiImage size={14} className="text-teal-400" />
+                  <div className="p-2 sm:p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 text-[10px] sm:text-xs font-mono">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <FiImage size={14} className="text-teal-400 shrink-0" />
                       <span className="font-bold text-[var(--crm-heading)] uppercase tracking-wider">Image Editor</span>
-                      <span className="text-[var(--crm-ink-faint)] text-[10px] truncate max-w-[200px]" title={uploadedImage.name}>{uploadedImage.name}</span>
+                      <span className="text-[var(--crm-ink-faint)] text-[9px] sm:text-[10px] truncate max-w-[120px] sm:max-w-[200px]" title={uploadedImage.name}>{uploadedImage.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto justify-end">
                       <button
                         type="button"
                         onClick={handleImageRotate}
-                        className="px-3 py-1.5 rounded border border-[var(--crm-line)] text-[10px] font-bold uppercase transition cursor-pointer hover:border-teal-500 hover:text-teal-400 flex items-center gap-1.5 text-[var(--crm-ink-soft)]"
+                        className="px-2 sm:px-3 py-1.5 rounded border border-[var(--crm-line)] text-[9px] sm:text-[10px] font-bold uppercase transition cursor-pointer hover:border-teal-500 hover:text-teal-400 flex items-center gap-1 text-[var(--crm-ink-soft)]"
                         title="Rotate 90°"
                       >
                         <FiRotateCw size={12} /> Rotate
@@ -3222,7 +3222,7 @@ export default function Leads() {
                       <button
                         type="button"
                         onClick={handleImageDelete}
-                        className="px-3 py-1.5 rounded border border-rose-800/50 text-[10px] font-bold uppercase transition cursor-pointer hover:bg-rose-950/40 text-rose-400 flex items-center gap-1.5"
+                        className="px-2 sm:px-3 py-1.5 rounded border border-rose-800/50 text-[9px] sm:text-[10px] font-bold uppercase transition cursor-pointer hover:bg-rose-950/40 text-rose-400 flex items-center gap-1"
                         title="Delete Image"
                       >
                         <FiTrash2 size={12} /> Delete
@@ -3230,7 +3230,7 @@ export default function Leads() {
                       <button
                         type="button"
                         onClick={handleImageDone}
-                        className="px-3 py-1.5 rounded border border-teal-600 bg-teal-600 text-white text-[10px] font-bold uppercase transition cursor-pointer hover:bg-teal-500 flex items-center gap-1.5"
+                        className="px-2 sm:px-3 py-1.5 rounded border border-teal-600 bg-teal-600 text-white text-[9px] sm:text-[10px] font-bold uppercase transition cursor-pointer hover:bg-teal-500 flex items-center gap-1"
                         title="Save & Continue"
                       >
                         <FiCheck size={12} /> Done
@@ -3239,10 +3239,10 @@ export default function Leads() {
                   </div>
 
                   {/* Brightness & Contrast sliders */}
-                  <div className="flex flex-wrap gap-4 p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-xs font-mono">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-2 sm:p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm text-[10px] sm:text-xs font-mono">
                     <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                       <FiSun size={12} className="text-amber-400 shrink-0" />
-                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Brightness</span>
+                      <span className="text-[8px] sm:text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-16 sm:w-20 shrink-0">Brightness</span>
                       <input
                         type="range"
                         min="30"
@@ -3251,11 +3251,11 @@ export default function Leads() {
                         onChange={(e) => setImageBrightness(Number(e.target.value))}
                         className="flex-1 h-1 accent-amber-400 cursor-pointer"
                       />
-                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageBrightness}%</span>
+                      <span className="text-[9px] sm:text-[10px] text-[var(--crm-ink-soft)] w-8 sm:w-10 text-right">{imageBrightness}%</span>
                     </div>
                     <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                       <FiCrop size={12} className="text-sky-400 shrink-0" />
-                      <span className="text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-20 shrink-0">Contrast</span>
+                      <span className="text-[8px] sm:text-[9px] uppercase font-bold text-[var(--crm-ink-faint)] w-16 sm:w-20 shrink-0">Contrast</span>
                       <input
                         type="range"
                         min="30"
@@ -3264,17 +3264,17 @@ export default function Leads() {
                         onChange={(e) => setImageContrast(Number(e.target.value))}
                         className="flex-1 h-1 accent-sky-400 cursor-pointer"
                       />
-                      <span className="text-[10px] text-[var(--crm-ink-soft)] w-10 text-right">{imageContrast}%</span>
+                      <span className="text-[9px] sm:text-[10px] text-[var(--crm-ink-soft)] w-8 sm:w-10 text-right">{imageContrast}%</span>
                     </div>
                   </div>
 
                   {/* Image preview with editing applied */}
-                  <div className="flex-1 overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/60 flex items-center justify-center p-4 min-h-[300px]">
+                  <div className="flex-1 overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/60 flex items-center justify-center p-2 sm:p-4 min-h-[200px] sm:min-h-[300px]">
                     <img
                       ref={imagePreviewRef}
                       src={uploadedImage.dataUrl}
                       alt="Uploaded preview"
-                      className="max-w-full max-h-[55vh] object-contain rounded shadow-lg transition-all duration-300"
+                      className="max-w-full max-h-[50vh] sm:max-h-[55vh] object-contain rounded shadow-lg transition-all duration-300"
                       style={{
                         transform: `rotate(${imageRotation}deg)`,
                         filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
@@ -3283,7 +3283,7 @@ export default function Leads() {
                   </div>
 
                   {/* Info banner */}
-                  <div className="p-3 bg-sky-950/20 border border-sky-500/20 rounded-sm text-[11px] text-sky-400 flex items-start gap-2.5">
+                  <div className="p-2 sm:p-3 bg-sky-950/20 border border-sky-500/20 rounded-sm text-[10px] sm:text-[11px] text-sky-400 flex items-start gap-2">
                     <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
                     <div>
                       <strong className="font-bold">Tip:</strong> After reviewing the image, click <strong>Done</strong> to save. Then upload a spreadsheet file (CSV/Excel) to map the data, or use this image as a reference while manually creating leads.
@@ -3294,12 +3294,12 @@ export default function Leads() {
                 /* IMAGE SAVED - Show thumbnail + option to re-edit or upload spreadsheet */
                 <div className="flex-1 flex flex-col space-y-4 text-left">
                   {/* Saved image thumbnail strip */}
-                  <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-sm flex items-center gap-4">
-                    <div className="relative group">
+                  <div className="p-2 sm:p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-sm flex items-center gap-3 sm:gap-4">
+                    <div className="relative group shrink-0">
                       <img
                         src={uploadedImage.dataUrl}
                         alt="Saved"
-                        className="w-20 h-20 object-cover rounded border border-emerald-500/30"
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded border border-emerald-500/30"
                         style={{
                           transform: `rotate(${imageRotation}deg)`,
                           filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
@@ -3315,50 +3315,50 @@ export default function Leads() {
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-mono font-bold text-emerald-400 uppercase">📸 Image Saved</p>
-                      <p className="text-[10px] text-[var(--crm-ink-faint)] truncate" title={uploadedImage.name}>{uploadedImage.name}</p>
-                      <p className="text-[10px] text-[var(--crm-ink-soft)] mt-1">Hover thumbnail to re-edit or delete. Upload a spreadsheet below to map data.</p>
+                      <p className="text-[10px] sm:text-xs font-mono font-bold text-emerald-400 uppercase">📸 Image Saved</p>
+                      <p className="text-[9px] sm:text-[10px] text-[var(--crm-ink-faint)] truncate" title={uploadedImage.name}>{uploadedImage.name}</p>
+                      <p className="text-[9px] sm:text-[10px] text-[var(--crm-ink-soft)] mt-0.5 sm:mt-1">Hover thumbnail to re-edit or delete. Upload a spreadsheet below to map data.</p>
                     </div>
                   </div>
 
                   {parsedRows.length === 0 ? (
                     /* Upload spreadsheet area (with image already saved) */
-                    <div className="flex-1 py-10 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[200px]">
+                    <div className="flex-1 py-8 sm:py-10 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[150px] sm:min-h-[200px]">
                       <input
                         type="file"
                         accept=".csv, .xlsx, .xls, .pdf, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
                         onChange={handleFileSelect}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                      <FiUpload size={28} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-2" />
-                      <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Upload Spreadsheet Data</p>
-                      <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Now upload a CSV / Excel / PDF to map the lead data, or another image</p>
+                      <FiUpload size={24} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-2" />
+                      <p className="text-[10px] sm:text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider text-center">Upload Spreadsheet Data</p>
+                      <p className="text-[9px] sm:text-[10px] text-[var(--crm-ink-faint)] mt-1 text-center px-4">Now upload a CSV / Excel / PDF to map the lead data, or another image</p>
                     </div>
                   ) : null}
                 </div>
               ) : parsedRows.length === 0 ? (
                 /* STEP 1: Upload Panel (original - now with image support) */
-                <div className="flex-1 py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[300px]">
+                <div className="flex-1 py-8 sm:py-12 flex flex-col items-center justify-center border border-dashed border-[var(--crm-ink-soft)]/20 rounded-sm bg-[var(--crm-bg)]/20 group hover:border-teal-500/30 transition-colors relative min-h-[200px] sm:min-h-[300px]">
                   <input
                     type="file"
                     accept=".csv, .xlsx, .xls, .pdf, .txt, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, image/jpeg, image/png, image/gif, image/bmp, image/webp, image/tiff"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <FiUpload size={32} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-3" />
-                  <p className="text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider">Select CSV / Excel / PDF / Image / Chat File</p>
-                  <p className="text-[10px] text-[var(--crm-ink-faint)] mt-1">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .txt, .jpg, .png file here (Max: 15MB)</p>
-                  <div className="flex items-center gap-3 mt-4 flex-wrap justify-center">
-                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-teal-950/60 text-teal-300 border border-teal-800/40">📊 Spreadsheet</span>
-                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-rose-950/60 text-rose-300 border border-rose-800/40">📄 PDF</span>
-                    <span className="px-2.5 py-1 rounded text-[9px] font-mono font-bold bg-violet-950/60 text-violet-300 border border-violet-800/40">📸 Photo</span>
+                  <FiUpload size={28} className="text-[var(--crm-ink-faint)] group-hover:text-teal-400 transition-colors mb-2 sm:mb-3" />
+                  <p className="text-[10px] sm:text-xs uppercase font-mono font-bold text-[var(--crm-ink-soft)] tracking-wider text-center px-4">Select CSV / Excel / PDF / Image / Chat File</p>
+                  <p className="text-[9px] sm:text-[10px] text-[var(--crm-ink-faint)] mt-1 text-center px-4">Click to browse or drag your .csv, .xlsx, .xls, .pdf, .txt, .jpg, .png file here (Max: 15MB)</p>
+                  <div className="flex items-center gap-2 sm:gap-3 mt-3 sm:mt-4 flex-wrap justify-center px-4">
+                    <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[8px] sm:text-[9px] font-mono font-bold bg-teal-950/60 text-teal-300 border border-teal-800/40">📊 Spreadsheet</span>
+                    <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[8px] sm:text-[9px] font-mono font-bold bg-rose-950/60 text-rose-300 border border-rose-800/40">📄 PDF</span>
+                    <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[8px] sm:text-[9px] font-mono font-bold bg-violet-950/60 text-violet-300 border border-violet-800/40">📸 Photo</span>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowChatTextModal(true);
                       }}
-                      className="px-3 py-1 rounded text-[9px] font-mono font-bold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 cursor-pointer transition shadow-sm flex items-center gap-1.5 z-10"
+                      className="px-2.5 py-1 rounded text-[8px] sm:text-[9px] font-mono font-bold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 cursor-pointer transition shadow-sm flex items-center gap-1 z-10"
                     >
                       💬 Extract Chat
                     </button>
@@ -3366,21 +3366,13 @@ export default function Leads() {
                 </div>
               ) : (
                 /* STEP 2: Spreadsheet Mapping and Grid View */
-                <div className="flex-1 flex flex-col space-y-4 overflow-hidden text-left">
-                  {/* Warning banner */}
-                  <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-sm text-[11px] text-amber-400 flex items-start gap-2.5">
-                    <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
-                    <div>
-                      <strong className="font-bold">Verify Column Alignments & Edit Cells:</strong> Map the spreadsheet columns to database fields using the dropdowns below. ✏️ <strong>Click or double-click inside any cell to edit details directly!</strong> Unmapped columns will be ignored. Required fields are marked with an asterisk (*).
-                    </div>
-                  </div>
-
+                <div className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-hidden text-left">
                   {/* Default Lead Quality / Priority Option */}
-                  <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
-                    <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2">
+                  <div className="p-2 sm:p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 text-[10px] sm:text-xs font-mono">
+                    <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2 shrink-0">
                       Set Lead Temperature / Quality Tag for Import:
                     </span>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar pb-1 w-full sm:w-auto">
                       {[
                         { value: 'ALL', label: 'ALL LEADS (AUTO) 🌐', style: 'bg-indigo-600 text-white border-indigo-700 font-bold' },
                         { value: 'HOT', label: 'HOT 🔥', style: 'bg-rose-600 text-white border-rose-700 font-bold' },
@@ -3392,9 +3384,9 @@ export default function Leads() {
                           key={t.value}
                           type="button"
                           onClick={() => setImportDefaultPriority(t.value)}
-                          className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase transition cursor-pointer ${importDefaultPriority === t.value
+                          className={`px-2 sm:px-3 py-1.5 rounded border text-[9px] sm:text-[10px] font-bold uppercase transition cursor-pointer shrink-0 ${importDefaultPriority === t.value
                               ? `${t.style} ring-1 ring-current font-black`
-                              : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)]'
+                              : 'border-[var(--crm-line)] text-[var(--crm-ink-faint)] hover:text-[var(--crm-heading)] bg-[var(--crm-bg)]/40'
                             }`}
                         >
                           {t.label}
@@ -3404,31 +3396,33 @@ export default function Leads() {
                   </div>
 
                   {/* Excel Spreadsheet View */}
-                  <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/40 text-[10px] font-mono custom-scrollbar relative flex-1">
-                    <table className="w-full border-collapse border border-[var(--crm-line)]">
-                      <thead className="sticky top-0 bg-[var(--crm-bg-sunken)] z-10">
+                  <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-[var(--crm-bg-raised)] text-[9px] sm:text-[10px] font-mono custom-scrollbar relative flex-1 min-h-[200px]">
+                    <table className="w-full border-collapse border border-[var(--crm-line)] min-w-[600px]">
+                      <thead className="sticky top-0 bg-[var(--crm-bg-sunken)] z-20">
                         {/* Field mapping selectors */}
-                        <tr className="border-b border-[var(--crm-line)]">
-                          <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/60 font-mono font-bold text-[10px] text-center w-12 shrink-0">MAP</th>
+                        <tr className="border-b border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]">
+                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] font-mono font-extrabold text-[9px] sm:text-[10px] text-[var(--crm-heading)] text-center w-10 sm:w-12 shrink-0 sticky left-0 z-30">
+                            MAP
+                          </th>
                           {parsedRows[0].map((_, colIdx) => {
                             if (deletedColIndices.has(colIdx)) return null;
                             return (
-                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] min-w-[150px] bg-slate-900/40">
+                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] min-w-[130px] sm:min-w-[150px] bg-transparent">
                                 <div className="flex items-center gap-1">
                                   <select
                                     value={columnMappings[colIdx] || ''}
                                     onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
-                                    className="flex-1 p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
+                                    className="flex-1 p-1 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm text-[9px] sm:text-[10px] text-[var(--crm-heading)] font-mono font-bold outline-none cursor-pointer"
                                   >
-                                    <option value="">[Unmapped]</option>
+                                    <option value="" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">[Unmapped]</option>
                                     {LEAD_FIELDS.map(f => (
-                                      <option key={f.value} value={f.value}>{f.label}</option>
+                                      <option key={f.value} value={f.value} className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">{f.label}</option>
                                     ))}
                                   </select>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCol(colIdx)}
-                                    className="p-1 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer shrink-0"
+                                    className="p-1 text-rose-500 hover:text-rose-600 rounded transition-colors cursor-pointer shrink-0"
                                     title={`Delete column ${getColumnLetter(colIdx)}`}
                                   >
                                     <FiTrash2 size={10} />
@@ -3439,14 +3433,14 @@ export default function Leads() {
                           })}
                         </tr>
                         {/* Excel coordinate letters and original CSV header name */}
-                        <tr className="border-b border-[var(--crm-line)] text-slate-400">
-                          <th className="p-2 border-r border-[var(--crm-line)] bg-slate-900/40 text-center font-mono font-bold">#</th>
+                        <tr className="border-b border-[var(--crm-line)] text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)]">
+                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-center font-mono font-bold text-[var(--crm-heading)] sticky left-0 z-30">#</th>
                           {parsedRows[0].map((hdr, colIdx) => {
                             if (deletedColIndices.has(colIdx)) return null;
                             return (
-                              <th key={colIdx} className="p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/20">
-                                <span className="text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
-                                <span className="truncate block font-sans text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
+                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-transparent">
+                                <span className="text-[9px] sm:text-[10px] text-teal-600 dark:text-teal-400 block mb-0.5 font-bold">{getColumnLetter(colIdx)}</span>
+                                <span className="truncate block font-sans text-[10px] sm:text-xs text-[var(--crm-heading)] font-bold" title={hdr}>{hdr || '[Empty Column]'}</span>
                               </th>
                             );
                           })}
@@ -3466,14 +3460,14 @@ export default function Leads() {
                             (rName && rName.length > 2 && leads.some(l => (l.customerName || '').trim().toLowerCase() === rName));
 
                           return (
-                            <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-950/30 hover:bg-purple-900/40' : 'hover:bg-[var(--crm-bg-raised)]/20'}`}>
-                              <td className="p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/60 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-12">
-                                <div className="flex items-center justify-center gap-1">
-                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-400 font-bold cursor-help">⚠️ {rowIdx + 1}</span> : rowIdx + 1}
+                            <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-500/10' : 'hover:bg-[var(--crm-bg-sunken)]/50'}`}>
+                              <td className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-center font-mono font-bold text-[var(--crm-heading)] select-none shrink-0 w-10 sm:w-12 sticky left-0 z-10">
+                                <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-600 dark:text-purple-400 font-bold cursor-help text-[10px]">⚠️ {rowIdx + 1}</span> : <span className="text-[10px] text-[var(--crm-heading)]">{rowIdx + 1}</span>}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleDeleteRow(rowIdx); }}
-                                    className="ml-0.5 p-0.5 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                                    className="ml-0.5 p-0.5 text-rose-500 hover:text-rose-600 rounded transition-colors cursor-pointer"
                                     title={`Delete row ${rowIdx + 1}`}
                                   >
                                     <FiTrash2 size={10} />
@@ -3482,21 +3476,19 @@ export default function Leads() {
                               </td>
                               {row.map((cell, colIdx) => {
                                 if (deletedColIndices.has(colIdx)) return null;
-                                const isMapped = !!columnMappings[colIdx];
                                 const actualRowIdx = rowIdx + 1;
                                 return (
                                   <td
                                     key={colIdx}
-                                    className={`p-1 border-r border-[var(--crm-line)] text-left min-w-[140px] max-w-[240px] ${isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-60 text-slate-400'
-                                      }`}
+                                    className="p-1 border-r border-[var(--crm-line)] text-left min-w-[130px] sm:min-w-[140px] max-w-[240px]"
                                   >
                                     <input
                                       type="text"
                                       value={cell ?? ''}
                                       onChange={(e) => handleCellEdit(actualRowIdx, colIdx, e.target.value)}
-                                      className="w-full bg-transparent hover:bg-black/40 focus:bg-black/80 border border-transparent focus:border-teal-500/80 outline-none px-1.5 py-1 text-[11px] font-mono text-current rounded transition-all"
+                                      className="w-full bg-transparent focus:bg-transparent hover:bg-transparent border-0 outline-none focus:ring-1 focus:ring-blue-500 px-1.5 py-1 text-[10px] sm:text-[11px] font-mono text-[var(--crm-heading)] font-semibold rounded transition-all"
                                       placeholder="Edit..."
-                                      title="Click or double-click to edit cell value"
+                                      title="Click or double-tap to edit cell value"
                                     />
                                   </td>
                                 );
@@ -3510,7 +3502,7 @@ export default function Leads() {
 
                   {/* Deleted rows undo bar */}
                   {(deletedRowIndices.size > 0 || deletedColIndices.size > 0) && (
-                    <div className="p-2 bg-rose-950/20 border border-rose-500/20 rounded-sm text-[10px] text-rose-400 flex items-center justify-between font-mono flex-wrap gap-2">
+                    <div className="p-2 bg-rose-950/20 border border-rose-500/20 rounded-sm text-[9px] sm:text-[10px] text-rose-400 flex items-center justify-between font-mono flex-wrap gap-2">
                       <span>
                         {deletedRowIndices.size > 0 && <><strong>{deletedRowIndices.size}</strong> row(s) removed</>}
                         {deletedRowIndices.size > 0 && deletedColIndices.size > 0 && ' · '}
@@ -3521,7 +3513,7 @@ export default function Leads() {
                           <button
                             type="button"
                             onClick={() => { setDeletedRowIndices(new Set()); toast.success('All deleted rows restored.'); }}
-                            className="px-2 py-1 border border-rose-700/50 rounded text-[9px] uppercase font-bold hover:bg-rose-950/60 transition cursor-pointer"
+                            className="px-2 py-1 border border-rose-700/50 rounded text-[8px] sm:text-[9px] uppercase font-bold hover:bg-rose-950/60 transition cursor-pointer"
                           >
                             Undo Rows
                           </button>
@@ -3530,7 +3522,7 @@ export default function Leads() {
                           <button
                             type="button"
                             onClick={() => { setDeletedColIndices(new Set()); toast.success('All deleted columns restored.'); }}
-                            className="px-2 py-1 border border-amber-700/50 rounded text-[9px] uppercase font-bold hover:bg-amber-950/60 transition cursor-pointer text-amber-400"
+                            className="px-2 py-1 border border-amber-700/50 rounded text-[8px] sm:text-[9px] uppercase font-bold hover:bg-amber-950/60 transition cursor-pointer text-amber-400"
                           >
                             Undo Columns
                           </button>
@@ -3541,37 +3533,37 @@ export default function Leads() {
 
                   {/* Saved image reference strip (if image was uploaded alongside spreadsheet) */}
                   {uploadedImage && !imageEditMode && (
-                    <div className="p-2 bg-violet-950/20 border border-violet-500/20 rounded-sm flex items-center gap-3">
+                    <div className="p-2 bg-violet-950/20 border border-violet-500/20 rounded-sm flex items-center gap-2 sm:gap-3">
                       <img
                         src={uploadedImage.dataUrl}
                         alt="Reference"
-                        className="w-12 h-12 object-cover rounded border border-violet-500/30"
+                        className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border border-violet-500/30 shrink-0"
                         style={{
                           transform: `rotate(${imageRotation}deg)`,
                           filter: `brightness(${imageBrightness}%) contrast(${imageContrast}%)`
                         }}
                       />
-                      <span className="text-[10px] font-mono text-violet-300 flex-1 truncate">📸 Reference image: {uploadedImage.name}</span>
-                      <button onClick={() => setImageEditMode(true)} className="p-1.5 border border-violet-600/40 rounded text-violet-300 hover:bg-violet-950/40 cursor-pointer" title="Re-edit image">
+                      <span className="text-[9px] sm:text-[10px] font-mono text-violet-300 flex-1 truncate">📸 Reference image: {uploadedImage.name}</span>
+                      <button onClick={() => setImageEditMode(true)} className="p-1.5 border border-violet-600/40 rounded text-violet-300 hover:bg-violet-950/40 cursor-pointer shrink-0" title="Re-edit image">
                         <FiEdit size={10} />
                       </button>
-                      <button onClick={handleImageDelete} className="p-1.5 border border-rose-600/40 rounded text-rose-400 hover:bg-rose-950/40 cursor-pointer" title="Remove image">
+                      <button onClick={handleImageDelete} className="p-1.5 border border-rose-600/40 rounded text-rose-400 hover:bg-rose-950/40 cursor-pointer shrink-0" title="Remove image">
                         <FiTrash2 size={10} />
                       </button>
                     </div>
                   )}
 
                   {/* Actions footer inside Step 2 */}
-                  <div className="flex items-center justify-between pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0">
-                    <p className="text-[11px] font-mono text-[var(--crm-ink-faint)]">
-                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
-                      {deletedRowIndices.size > 0 && <span className="text-rose-400 ml-1">({deletedRowIndices.size} removed)</span>}
+                  <div className="flex flex-row items-center justify-between gap-2 pt-2.5 sm:pt-3 border-t border-[var(--crm-line)] shrink-0 sticky bottom-0 bg-[var(--crm-bg-raised)] z-20 pb-1 font-sans">
+                    <p className="text-[10px] sm:text-xs font-mono text-[var(--crm-ink-faint)] text-left shrink-0">
+                      Total loaded: <strong className="text-[var(--crm-heading)] font-extrabold">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
+                      {deletedRowIndices.size > 0 && <span className="text-rose-500 ml-1 font-bold">({deletedRowIndices.size} removed)</span>}
                     </p>
-                    <div className="flex gap-3">
+                    <div className="flex items-center justify-end gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => { setParsedRows([]); setColumnMappings({}); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }}
-                        className="px-4 py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-xs font-bold uppercase rounded-sm transition-colors cursor-pointer"
+                        className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] sm:text-xs font-semibold rounded-md transition-colors cursor-pointer text-center whitespace-nowrap"
                       >
                         Reset File
                       </button>
@@ -3579,9 +3571,9 @@ export default function Leads() {
                         type="button"
                         onClick={handleConfirmImport}
                         disabled={importing}
-                        className="px-6 py-2.5 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-xs font-bold uppercase rounded-sm hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-40 cursor-pointer shadow-md"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-bold rounded-md transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1 active:scale-95 disabled:opacity-40 whitespace-nowrap"
                       >
-                        {importing ? 'Ingesting Spreadsheet...' : 'Confirm Bulk Import'}
+                        {importing ? 'Ingesting...' : 'Confirm'}
                       </button>
                     </div>
                   </div>
@@ -3595,7 +3587,7 @@ export default function Leads() {
       {/* WhatsApp Chat Extraction Modal */}
       <AnimatePresence>
         {showChatTextModal && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-2 pb-20 sm:p-4">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
