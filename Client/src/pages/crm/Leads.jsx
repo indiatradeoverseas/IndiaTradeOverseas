@@ -3182,7 +3182,7 @@ export default function Leads() {
       {/* Excel Spreadsheet / Image Ingestion Modal */}
       <AnimatePresence>
         {showImportModal && (
-          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-2 pb-20 sm:p-4">
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -3367,14 +3367,6 @@ export default function Leads() {
               ) : (
                 /* STEP 2: Spreadsheet Mapping and Grid View */
                 <div className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-hidden text-left">
-                  {/* Warning banner */}
-                  <div className="p-2 sm:p-3 bg-amber-950/20 border border-amber-500/20 rounded-sm text-[9px] sm:text-[11px] text-amber-400 flex items-start gap-2">
-                    <FiAlertCircle className="shrink-0 mt-0.5" size={14} />
-                    <div>
-                      <strong className="font-bold">Verify Column Alignments & Edit Cells:</strong> Map the spreadsheet columns to database fields using the dropdowns below. ✏️ <strong>Click or double-tap inside any cell to edit details directly!</strong> Unmapped columns will be ignored. Required fields are marked with an asterisk (*).
-                    </div>
-                  </div>
-
                   {/* Default Lead Quality / Priority Option */}
                   <div className="p-2 sm:p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 text-[10px] sm:text-xs font-mono">
                     <span className="font-bold text-[var(--crm-heading)] flex items-center gap-2 shrink-0">
@@ -3404,33 +3396,33 @@ export default function Leads() {
                   </div>
 
                   {/* Excel Spreadsheet View */}
-                  <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-black/40 text-[9px] sm:text-[10px] font-mono custom-scrollbar relative flex-1 min-h-[200px]">
+                  <div className="overflow-auto border border-[var(--crm-line)] rounded-sm bg-[var(--crm-bg-raised)] text-[9px] sm:text-[10px] font-mono custom-scrollbar relative flex-1 min-h-[200px]">
                     <table className="w-full border-collapse border border-[var(--crm-line)] min-w-[600px]">
                       <thead className="sticky top-0 bg-[var(--crm-bg-sunken)] z-20">
                         {/* Field mapping selectors */}
-                        <tr className="border-b border-[var(--crm-line)]">
-                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-slate-900/90 font-mono font-bold text-[9px] sm:text-[10px] text-center w-10 sm:w-12 shrink-0 sticky left-0 z-30">
+                        <tr className="border-b border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]">
+                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] font-mono font-extrabold text-[9px] sm:text-[10px] text-[var(--crm-heading)] text-center w-10 sm:w-12 shrink-0 sticky left-0 z-30">
                             MAP
                           </th>
                           {parsedRows[0].map((_, colIdx) => {
                             if (deletedColIndices.has(colIdx)) return null;
                             return (
-                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] min-w-[130px] sm:min-w-[150px] bg-slate-900/60">
+                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] min-w-[130px] sm:min-w-[150px] bg-transparent">
                                 <div className="flex items-center gap-1">
                                   <select
                                     value={columnMappings[colIdx] || ''}
                                     onChange={(e) => setColumnMappings({ ...columnMappings, [colIdx]: e.target.value })}
-                                    className="flex-1 p-1 bg-black border border-[var(--crm-line)] rounded-sm text-[9px] sm:text-[10px] text-[var(--crm-heading)] font-mono outline-none cursor-pointer"
+                                    className="flex-1 p-1 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] rounded-sm text-[9px] sm:text-[10px] text-[var(--crm-heading)] font-mono font-bold outline-none cursor-pointer"
                                   >
-                                    <option value="">[Unmapped]</option>
+                                    <option value="" className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">[Unmapped]</option>
                                     {LEAD_FIELDS.map(f => (
-                                      <option key={f.value} value={f.value}>{f.label}</option>
+                                      <option key={f.value} value={f.value} className="bg-[var(--crm-bg-raised)] text-[var(--crm-heading)]">{f.label}</option>
                                     ))}
                                   </select>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCol(colIdx)}
-                                    className="p-1 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer shrink-0"
+                                    className="p-1 text-rose-500 hover:text-rose-600 rounded transition-colors cursor-pointer shrink-0"
                                     title={`Delete column ${getColumnLetter(colIdx)}`}
                                   >
                                     <FiTrash2 size={10} />
@@ -3441,14 +3433,14 @@ export default function Leads() {
                           })}
                         </tr>
                         {/* Excel coordinate letters and original CSV header name */}
-                        <tr className="border-b border-[var(--crm-line)] text-slate-400 bg-[var(--crm-bg-sunken)]">
-                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-slate-900/90 text-center font-mono font-bold sticky left-0 z-30">#</th>
+                        <tr className="border-b border-[var(--crm-line)] text-[var(--crm-heading)] bg-[var(--crm-bg-sunken)]">
+                          <th className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-center font-mono font-bold text-[var(--crm-heading)] sticky left-0 z-30">#</th>
                           {parsedRows[0].map((hdr, colIdx) => {
                             if (deletedColIndices.has(colIdx)) return null;
                             return (
-                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-slate-900/40">
-                                <span className="text-[9px] sm:text-[10px] text-teal-400 block mb-0.5">{getColumnLetter(colIdx)}</span>
-                                <span className="truncate block font-sans text-[10px] sm:text-xs text-[var(--crm-heading)]" title={hdr}>{hdr || '[Empty Column]'}</span>
+                              <th key={colIdx} className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] text-left font-mono font-semibold bg-transparent">
+                                <span className="text-[9px] sm:text-[10px] text-teal-600 dark:text-teal-400 block mb-0.5 font-bold">{getColumnLetter(colIdx)}</span>
+                                <span className="truncate block font-sans text-[10px] sm:text-xs text-[var(--crm-heading)] font-bold" title={hdr}>{hdr || '[Empty Column]'}</span>
                               </th>
                             );
                           })}
@@ -3468,14 +3460,14 @@ export default function Leads() {
                             (rName && rName.length > 2 && leads.some(l => (l.customerName || '').trim().toLowerCase() === rName));
 
                           return (
-                            <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-950/30 hover:bg-purple-900/40' : 'hover:bg-[var(--crm-bg-raised)]/20'}`}>
-                              <td className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)]/90 text-center font-mono font-bold text-[var(--crm-ink-faint)] select-none shrink-0 w-10 sm:w-12 sticky left-0 z-10">
+                            <tr key={rowIdx} className={`border-b border-[var(--crm-line)] transition-colors ${isRowDup ? 'bg-purple-500/10' : 'hover:bg-[var(--crm-bg-sunken)]/50'}`}>
+                              <td className="p-1.5 sm:p-2 border-r border-[var(--crm-line)] bg-[var(--crm-bg-sunken)] text-center font-mono font-bold text-[var(--crm-heading)] select-none shrink-0 w-10 sm:w-12 sticky left-0 z-10">
                                 <div className="flex items-center justify-center gap-0.5 sm:gap-1">
-                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-400 font-bold cursor-help text-[10px]">⚠️ {rowIdx + 1}</span> : <span className="text-[10px]">{rowIdx + 1}</span>}
+                                  {isRowDup ? <span title="Matches existing lead in database" className="text-purple-600 dark:text-purple-400 font-bold cursor-help text-[10px]">⚠️ {rowIdx + 1}</span> : <span className="text-[10px] text-[var(--crm-heading)]">{rowIdx + 1}</span>}
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleDeleteRow(rowIdx); }}
-                                    className="ml-0.5 p-0.5 text-rose-500/40 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                                    className="ml-0.5 p-0.5 text-rose-500 hover:text-rose-600 rounded transition-colors cursor-pointer"
                                     title={`Delete row ${rowIdx + 1}`}
                                   >
                                     <FiTrash2 size={10} />
@@ -3484,19 +3476,17 @@ export default function Leads() {
                               </td>
                               {row.map((cell, colIdx) => {
                                 if (deletedColIndices.has(colIdx)) return null;
-                                const isMapped = !!columnMappings[colIdx];
                                 const actualRowIdx = rowIdx + 1;
                                 return (
                                   <td
                                     key={colIdx}
-                                    className={`p-1 border-r border-[var(--crm-line)] text-left min-w-[130px] sm:min-w-[140px] max-w-[240px] ${isMapped ? (isRowDup ? 'bg-purple-950/40 text-purple-200 font-medium border-l border-purple-500/20' : 'bg-teal-950/20 text-teal-300 font-medium border-l border-teal-500/20') : 'opacity-60 text-slate-400'
-                                      }`}
+                                    className="p-1 border-r border-[var(--crm-line)] text-left min-w-[130px] sm:min-w-[140px] max-w-[240px]"
                                   >
                                     <input
                                       type="text"
                                       value={cell ?? ''}
                                       onChange={(e) => handleCellEdit(actualRowIdx, colIdx, e.target.value)}
-                                      className="w-full bg-transparent hover:bg-black/40 focus:bg-black/80 border border-transparent focus:border-teal-500/80 outline-none px-1.5 py-1 text-[10px] sm:text-[11px] font-mono text-current rounded transition-all"
+                                      className="w-full bg-transparent focus:bg-transparent hover:bg-transparent border-0 outline-none focus:ring-1 focus:ring-blue-500 px-1.5 py-1 text-[10px] sm:text-[11px] font-mono text-[var(--crm-heading)] font-semibold rounded transition-all"
                                       placeholder="Edit..."
                                       title="Click or double-tap to edit cell value"
                                     />
@@ -3564,16 +3554,16 @@ export default function Leads() {
                   )}
 
                   {/* Actions footer inside Step 2 */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 sm:pt-4 border-t border-[var(--crm-ink-soft)]/10 shrink-0 sticky bottom-0 bg-[var(--crm-bg-raised)] z-20 pb-1">
-                    <p className="text-[9px] sm:text-[11px] font-mono text-[var(--crm-ink-faint)] text-center sm:text-left w-full sm:w-auto">
-                      Total spreadsheet rows loaded: <strong className="text-[var(--crm-heading)]">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
-                      {deletedRowIndices.size > 0 && <span className="text-rose-400 ml-1">({deletedRowIndices.size} removed)</span>}
+                  <div className="flex flex-row items-center justify-between gap-2 pt-2.5 sm:pt-3 border-t border-[var(--crm-line)] shrink-0 sticky bottom-0 bg-[var(--crm-bg-raised)] z-20 pb-1 font-sans">
+                    <p className="text-[10px] sm:text-xs font-mono text-[var(--crm-ink-faint)] text-left shrink-0">
+                      Total loaded: <strong className="text-[var(--crm-heading)] font-extrabold">{parsedRows.length - 1 - deletedRowIndices.size} records</strong>
+                      {deletedRowIndices.size > 0 && <span className="text-rose-500 ml-1 font-bold">({deletedRowIndices.size} removed)</span>}
                     </p>
-                    <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="flex items-center justify-end gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => { setParsedRows([]); setColumnMappings({}); setDeletedRowIndices(new Set()); setDeletedColIndices(new Set()); }}
-                        className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 bg-[var(--crm-bg)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] text-[10px] sm:text-xs font-bold uppercase rounded-sm transition-colors cursor-pointer"
+                        className="px-2.5 py-1 bg-[var(--crm-bg-sunken)] hover:bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] text-[var(--crm-heading)] text-[10px] sm:text-xs font-semibold rounded-md transition-colors cursor-pointer text-center whitespace-nowrap"
                       >
                         Reset File
                       </button>
@@ -3581,9 +3571,9 @@ export default function Leads() {
                         type="button"
                         onClick={handleConfirmImport}
                         disabled={importing}
-                        className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-2.5 bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] text-[10px] sm:text-xs font-bold uppercase rounded-sm hover:bg-[var(--crm-ink-soft)] transition-colors disabled:opacity-40 cursor-pointer shadow-md"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-bold rounded-md transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1 active:scale-95 disabled:opacity-40 whitespace-nowrap"
                       >
-                        {importing ? 'Ingesting...' : 'Confirm Import'}
+                        {importing ? 'Ingesting...' : 'Confirm'}
                       </button>
                     </div>
                   </div>
@@ -3597,7 +3587,7 @@ export default function Leads() {
       {/* WhatsApp Chat Extraction Modal */}
       <AnimatePresence>
         {showChatTextModal && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-2 pb-20 sm:p-4">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
