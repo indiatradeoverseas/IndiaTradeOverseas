@@ -1056,12 +1056,28 @@ const handleTriggerReset = async () => {
     }
   });
 
+  const attendanceTodayPct = realHrAnalyticsData.totalStaff > 0
+    ? Math.round((realHrAnalyticsData.presentCount / realHrAnalyticsData.totalStaff) * 100)
+    : 0;
+
+  const currentMonthIdx = new Date().getMonth();
+  const currentYr = new Date().getFullYear();
+  const joinersThisMonthCount = employees.filter(e => {
+    if (!e.createdAt) return false;
+    const d = new Date(e.createdAt);
+    return d.getMonth() === currentMonthIdx && d.getFullYear() === currentYr;
+  }).length;
+  const inactiveOrExitedCount = employees.filter(e => e.isActive === false || e.status === 'INACTIVE' || e.status === 'TERMINATED').length;
+  const computedAttritionRate = activeEmployeesCount > 0
+    ? ((inactiveOrExitedCount / (activeEmployeesCount + inactiveOrExitedCount)) * 100).toFixed(1)
+    : '0.0';
+
   const stats = [
     { title: 'Active Employees', value: activeEmployeesCount, icon: FiUsers, tone: 'ink' },
     { title: 'Open Vacancies', value: activeVacanciesCount, icon: FiBriefcase, tone: 'accent' },
     { title: 'Pending Applications', value: `${pendingAppsCount} (Total: ${applications.length})`, icon: FiFileText, tone: 'warning' },
-    { title: 'Talent Bank Leads', value: careerLeadsCount || 254, icon: FiLayers, tone: 'accent' },
-    { title: 'Attendance Today', value: attendanceReport?.stats ? `${Math.round((attendanceReport.stats.presentCount / Math.max(attendanceReport.stats.totalEmployees, 1)) * 100)}%` : '0%', icon: FiCheckCircle, tone: 'positive' }
+    { title: 'Talent Bank Leads', value: careerLeadsCount ?? 0, icon: FiLayers, tone: 'accent' },
+    { title: 'Attendance Today', value: `${attendanceTodayPct}%`, icon: FiCheckCircle, tone: 'positive' }
   ];
 
   return (
@@ -1438,29 +1454,29 @@ const handleTriggerReset = async () => {
                         <div className="grid grid-cols-3 gap-2">
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Present Today</span>
-                            <strong className="text-lg text-[var(--crm-positive)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.presentCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-positive)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{realHrAnalyticsData.presentCount}</strong>
                           </div>
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Late Arrivals</span>
-                            <strong className="text-lg text-[var(--crm-warning)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.lateCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-warning)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{realHrAnalyticsData.lateCount}</strong>
                           </div>
                           <div className="p-2 border rounded-sm text-center" style={CARD_SUNKEN}>
                             <span className="text-[7px] font-mono font-bold text-[var(--crm-ink-faint)] uppercase block">Absent Count</span>
-                            <strong className="text-lg text-[var(--crm-danger)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{attendanceReport?.stats?.absentCount || 0}</strong>
+                            <strong className="text-lg text-[var(--crm-danger)] font-serif block" style={{ fontFamily: 'var(--crm-font-display)' }}>{realHrAnalyticsData.absentCount}</strong>
                           </div>
                         </div>
                         <div className="space-y-1.5 pt-3 border-t border-[var(--crm-line)] text-[9px] font-mono mt-3">
                           <div className="flex justify-between items-center">
                             <span className="text-[var(--crm-ink-faint)]">Additions This Month:</span>
-                            <strong className="text-[var(--crm-positive)]">+4 Joiners</strong>
+                            <strong className="text-[var(--crm-positive)]">+{joinersThisMonthCount} Joiner{joinersThisMonthCount !== 1 ? 's' : ''}</strong>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-[var(--crm-ink-faint)]">Resignations:</span>
-                            <strong className="text-[var(--crm-danger)]">-1 Exit</strong>
+                            <strong className="text-[var(--crm-danger)]">-{inactiveOrExitedCount} Exit{inactiveOrExitedCount !== 1 ? 's' : ''}</strong>
                           </div>
                           <div className="flex justify-between items-center border p-1.5 rounded-sm" style={{ borderColor: 'var(--crm-line)', background: 'var(--crm-bg-sunken)' }}>
-                            <span className="text-[var(--crm-ink-faint)]">Target Monthly Attrition Rate:</span>
-                            <strong className="text-[var(--crm-accent)]">1.6% (Stable)</strong>
+                            <span className="text-[var(--crm-ink-faint)]">Monthly Attrition Rate:</span>
+                            <strong className="text-[var(--crm-accent)]">{computedAttritionRate}%</strong>
                           </div>
                         </div>
                       </>
