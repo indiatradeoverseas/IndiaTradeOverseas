@@ -294,12 +294,7 @@ export default function HrManagerDashboard() {
       }
     }
 
-    // Fallback: If present + absent is 0 but total staff > 0, estimate from active employees
-    if (presentCount === 0 && absentCount === 0 && totalStaff > 0) {
-      const activeEmps = employees.filter(e => e.status !== 'INACTIVE' && e.status !== 'TERMINATED').length || totalStaff;
-      presentCount = activeEmps;
-      absentCount = Math.max(0, totalStaff - presentCount);
-    }
+    // Compute exact counts based strictly on logged attendance records or backend stats
     
     const openVacancies = jobs.filter(j => j.status === 'OPEN' || j.isActive !== false).length;
     const pendingApps = applications.filter(a => a.status === 'PENDING' || a.status === 'APPLIED' || !a.status).length;
@@ -1097,13 +1092,7 @@ const handleTriggerReset = async () => {
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto flex-shrink-0">
-          <Link
-            to="/crm/hr/executive"
-            className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80 text-[var(--crm-accent)] hover:text-white"
-            style={{ ...LABEL_MONO, borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)' }}
-          >
-            Executive View
-          </Link>
+          
           <button
             onClick={handleOpenAssignTask}
             className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80"

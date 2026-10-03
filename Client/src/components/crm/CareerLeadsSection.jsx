@@ -1658,36 +1658,21 @@ export default function CareerLeadsSection({ onOpenApplications }) {
                           className="hidden"
                           id="career-leads-csv-picker"
                         />
-                        <label
-                          htmlFor="career-leads-csv-picker"
-                          className="inline-block px-4 py-2 text-xs font-bold uppercase rounded-xl bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 cursor-pointer shadow-sm"
-                        >
-                          Browse File / Spreadsheet
-                        </label>
-                      </div>
-
-                      {/* Or paste raw CSV text */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs uppercase font-bold text-[var(--crm-ink-faint)]">
-                            Or Paste CSV Data Directly:
+                        <div className="flex items-center justify-center gap-2.5 pt-1">
+                          <label
+                            htmlFor="career-leads-csv-picker"
+                            className="inline-block px-4 py-2 text-xs font-bold uppercase rounded-xl bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 cursor-pointer shadow-sm"
+                          >
+                            Browse File / Spreadsheet
                           </label>
                           <button
                             type="button"
                             onClick={handleDownloadTemplate}
-                            className="text-xs text-blue-400 font-semibold underline hover:opacity-80 cursor-pointer"
+                            className="px-3.5 py-2 text-xs font-bold uppercase rounded-xl border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 transition cursor-pointer"
                           >
                             Download Sample Format
                           </button>
                         </div>
-                        <textarea
-                          rows={2.5}
-                          placeholder={`Full Name, Email, Phone, Position, Experience, Location\nRahul Kumar, rahul@example.com, 9876543210, Sales Manager, 3 Years, Delhi`}
-                          value={bulkCsvText}
-                          onChange={handleBulkCsvTextChange}
-                          className="w-full p-2.5 rounded-xl border bg-[var(--crm-bg-sunken)] text-[var(--crm-heading)] placeholder-slate-500 focus:outline-none text-xs font-sans"
-                          style={{ borderColor: 'var(--crm-line)' }}
-                        />
                       </div>
                     </div>
                   )}
