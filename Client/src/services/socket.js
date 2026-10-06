@@ -4,20 +4,36 @@ import { BACKEND_URL } from '../config/env';
 import { playNotificationSound } from '../utils/sound';
 
 let socket = null;
+let currentEmployeeId = null;
 let latestDriverLocations = [];
 
 export const socketService = {
   connect(user) {
-    if (socket) return socket;
     if (!user) return null;
 
     const employeeId = String(user._id || user.id || user.trialId || user.employeeId || user.email || 'user');
     const role = String(user.role || user.position || 'USER');
     const name = String(user.fullName || user.name || user.email || 'User').replace(/&/g, 'and');
 
+    // If active socket exists for the same employee, reuse it without tearing down
+    if (socket && currentEmployeeId === employeeId && (socket.connected || socket.active || socket.connecting)) {
+      return socket;
+    }
+
+    // Clean up existing socket if user changed
+    if (socket) {
+      try {
+        socket.removeAllListeners();
+        socket.disconnect();
+      } catch (err) {}
+      socket = null;
+    }
+
+    currentEmployeeId = employeeId;
+
     socket = io(BACKEND_URL, {
       query: { employeeId, role, name },
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 20,
       reconnectionDelay: 1000,
@@ -29,7 +45,7 @@ export const socketService = {
     });
 
     socket.on('connect_error', (error) => {
-      console.warn('[WebSocket] Connection failed (falling back):', error.message);
+      console.warn('[WebSocket] Connection notice:', error?.message || error);
     });
 
     // Listeners for task actions
@@ -107,13 +123,32 @@ export const socketService = {
       window.dispatchEvent(event);
     });
 
+    socket.on('hr_work_log_submitted', (data) => {
+      const event = new CustomEvent('hr_work_log_submitted_event', { detail: data });
+      window.dispatchEvent(event);
+    });
+
+    socket.on('attendance_updated', (data) => {
+      const event = new CustomEvent('attendance_updated_event', { detail: data });
+      window.dispatchEvent(event);
+    });
+
+    socket.on('employee_status_updated', (data) => {
+      const event = new CustomEvent('employee_status_updated_event', { detail: data });
+      window.dispatchEvent(event);
+    });
+
     return socket;
   },
 
   disconnect() {
     if (socket) {
-      socket.disconnect();
+      try {
+        socket.removeAllListeners();
+        socket.disconnect();
+      } catch (err) {}
       socket = null;
+      currentEmployeeId = null;
       latestDriverLocations = [];
       console.log('[WebSocket] Connection closed');
     }

@@ -91,13 +91,13 @@ const fieldStyle = {
 
 const cardStyle = {
   borderColor: 'var(--crm-line)',
-  background: 'var(--crm-bg-raised)',
+  background: 'transparent',
   boxShadow: 'var(--crm-shadow)',
 };
 
 const sunkenCardStyle = {
   borderColor: 'var(--crm-line)',
-  background: 'var(--crm-bg-sunken)',
+  background: 'transparent',
 };
 
 const primaryButtonStyle = {

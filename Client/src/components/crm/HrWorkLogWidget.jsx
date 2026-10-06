@@ -36,19 +36,24 @@ export default function HrWorkLogWidget({ showSubmissionForm = true, title = "HR
   useEffect(() => {
     fetchLogs();
 
-    const socket = socketService.getSocket();
-    const handleNewLog = (newLog) => {
-      setLogs(prev => [newLog, ...prev.filter(l => l._id !== newLog._id)]);
+    const handleNewLog = (e) => {
+      const newLog = e?.detail || e;
+      if (newLog && newLog._id) {
+        setLogs(prev => [newLog, ...prev.filter(l => l._id !== newLog._id)]);
+      }
     };
 
+    const socket = socketService.getSocket();
     if (socket) {
       socket.on('hr_work_log_submitted', handleNewLog);
     }
+    window.addEventListener('hr_work_log_submitted_event', handleNewLog);
 
     return () => {
       if (socket) {
         socket.off('hr_work_log_submitted', handleNewLog);
       }
+      window.removeEventListener('hr_work_log_submitted_event', handleNewLog);
     };
   }, []);
 

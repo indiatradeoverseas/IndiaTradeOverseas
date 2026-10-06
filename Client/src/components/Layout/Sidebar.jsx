@@ -90,7 +90,7 @@ export default function Sidebar({ onClose }) {
 
   return (
     <aside
-      className="flex h-full w-full select-none flex-col overflow-hidden border-r"
+      className="crm-sidebar flex h-full w-full select-none flex-col overflow-hidden border-r"
       style={{
         fontFamily: 'var(--crm-font-body)',
         background: 'linear-gradient(180deg, var(--crm-nav-bg) 0%, var(--crm-nav-bg-to) 100%)',

@@ -859,12 +859,7 @@ export default function TransportManager() {
       }
 
       if (!assignedViaTransport) {
-        await leadsApi.assignLead(leadId, {
-          assignedTo: targetUserId,
-          driverId: targetUserId,
-          assignedDriverId: targetUserId,
-          driverName: empName
-        });
+        await leadsApi.assignLead(leadId, { assignedTo: targetUserId });
       }
 
       const targetLeadObj = [...dispatchQueue, ...trips].find(l => l._id === leadId || l.orderNumber === leadId || l.dispatchNumber === leadId) || {};

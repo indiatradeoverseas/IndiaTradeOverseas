@@ -1148,7 +1148,9 @@ export default function CEODashboard() {
                             <td className="py-2.5 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
                             <td className="py-2.5 px-3 font-bold text-pink-400">{convPct}%</td>
                             <td className="py-2.5 px-3">
-                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${idx === 0 ? 'bg-amber-950 border-amber-800 text-amber-300' : 'bg-slate-900 border-slate-700 text-slate-300'
+                              <span className={`px-2.5 py-1 rounded-md text-[9.5px] font-extrabold border inline-flex items-center gap-1 whitespace-nowrap ${idx === 0
+                                  ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm'
+                                  : 'bg-slate-900 border-slate-700 text-slate-300 text-[8px] px-2 py-0.5'
                                 }`}>
                                 #{idx + 1} {idx === 0 ? '🏆 TOP PERFORMER' : 'ACTIVE'}
                               </span>

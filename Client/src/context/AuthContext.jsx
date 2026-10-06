@@ -14,14 +14,13 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  const userId = user ? String(user._id || user.id || user.employeeId || user.email || '') : null;
+
   useEffect(() => {
     if (user) {
       socketService.connect(user);
     }
-    return () => {
-      socketService.disconnect();
-    };
-  }, [user]);
+  }, [userId]);
 
   const checkAuth = async () => {
     const token = authApi.getToken();
@@ -122,10 +121,24 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = async (credentials) => {
     const response = await authApi.adminLogin(credentials);
-    if (response.success) {
+    if (response.success && response.data?.user) {
       localStorage.setItem('isEmployeeAuth', 'false');
       setUser(response.data.user);
     }
+    return response;
+  };
+
+  const verifyAdminOtp = async (otpData) => {
+    const response = await authApi.verifyAdminOtp(otpData);
+    if (response.success && response.data?.user) {
+      localStorage.setItem('isEmployeeAuth', 'false');
+      setUser(response.data.user);
+    }
+    return response;
+  };
+
+  const requestAdminOtp = async (emailData) => {
+    const response = await authApi.requestAdminOtp(emailData);
     return response;
   };
 
@@ -176,11 +189,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authApi.logout();
     localStorage.removeItem('isEmployeeAuth');
+    socketService.disconnect();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, employeeLogin, trialLogin, trialSignup, adminLogin, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, employeeLogin, trialLogin, trialSignup, adminLogin, verifyAdminOtp, requestAdminOtp, googleLogin, adminGoogleLogin, verifyOtp, register, verifyEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

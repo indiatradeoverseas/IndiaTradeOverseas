@@ -247,7 +247,7 @@ textarea {
 
 /* Sidebar Theme Engine — Deep Navy in Light Mode (Image 1), Pure Black in Dark Mode */
 aside.crm-sidebar,
-.crm-portal aside {
+.crm-portal aside.crm-sidebar {
   --crm-sb-bg-from: #0A1B36;
   --crm-sb-bg-to: #051124;
   --crm-sb-card-bg: rgba(0, 0, 0, 0.45);
@@ -259,7 +259,7 @@ aside.crm-sidebar,
 }
 
 .crm-portal.light-theme aside.crm-sidebar,
-.crm-portal[data-theme='light'] aside {
+.crm-portal[data-theme='light'] aside.crm-sidebar {
   --crm-sb-bg-from: #0A1B36;
   --crm-sb-bg-to: #051124;
   --crm-sb-card-bg: rgba(0, 0, 0, 0.45);
@@ -270,12 +270,12 @@ aside.crm-sidebar,
 
 /* Exempt sidebar elements from high-contrast light mode dark text override */
 .crm-portal.light-theme aside.crm-sidebar *,
-.crm-portal[data-theme='light'] aside * {
+.crm-portal[data-theme='light'] aside.crm-sidebar * {
   color: inherit;
 }
 
 .crm-portal.light-theme aside.crm-sidebar .text-white,
-.crm-portal[data-theme='light'] aside .text-white {
+.crm-portal[data-theme='light'] aside.crm-sidebar .text-white {
   color: #FFFFFF !important;
 }
 
@@ -294,11 +294,9 @@ aside.crm-sidebar,
 }
 
 /* Sidebar always gets PURE WHITE font in all themes */
-aside .itc-brand-title,
 aside.crm-sidebar .itc-brand-title,
-.crm-portal.light-theme aside .itc-brand-title,
 .crm-portal.light-theme aside.crm-sidebar .itc-brand-title,
-.crm-portal.light-theme aside * .itc-brand-title {
+.crm-portal.light-theme aside.crm-sidebar * .itc-brand-title {
   color: #FFFFFF !important;
 }
 
@@ -315,16 +313,14 @@ aside.crm-sidebar .itc-brand-title,
   color: #E2E8F0 !important;
 }
 
-aside .itc-brand-subtitle,
 aside.crm-sidebar .itc-brand-subtitle,
-.crm-portal.light-theme aside .itc-brand-subtitle,
 .crm-portal.light-theme aside.crm-sidebar .itc-brand-subtitle,
-.crm-portal.light-theme aside * .itc-brand-subtitle {
+.crm-portal.light-theme aside.crm-sidebar * .itc-brand-subtitle {
   color: #E2E8F0 !important;
 }
 
 .crm-portal:not(.light-theme) aside.crm-sidebar,
-.crm-portal[data-theme='dark'] aside {
+.crm-portal[data-theme='dark'] aside.crm-sidebar {
   --crm-sb-bg-from: #000000;
   --crm-sb-bg-to: #000000;
   --crm-sb-card-bg: rgba(255, 255, 255, 0.05);
