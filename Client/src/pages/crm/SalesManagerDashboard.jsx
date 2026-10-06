@@ -903,7 +903,7 @@ export default function SalesManagerDashboard() {
   // Win Rate
   const totalClosedDeals = allLeads.filter(l => ['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes(l.stage)).length;
   const wonDeals = allLeads.filter(l => ['CLOSED_WON', 'DEAL_WON'].includes(l.stage)).length;
-  const winRatePercent = totalClosedDeals > 0 ? Math.round((wonDeals / totalClosedDeals) * 100) : 68; // fallback to 68% default if dry
+  const winRatePercent = totalClosedDeals > 0 ? Math.round((wonDeals / totalClosedDeals) * 100) : 0;
 
   const dealsInDocStageCount = allLeads.filter(l => ['DOCUMENT_PENDING', 'PAYMENT_PENDING'].includes(l.stage)).length;
   const pendingApprovalsCount = pendingDocs.length;
@@ -1560,7 +1560,7 @@ export default function SalesManagerDashboard() {
                         </div>
                         <div className="text-left">
                           <span className="text-[9px] uppercase font-mono font-bold tracking-wider text-rose-100 block">HOT DEALS (URGENT)</span>
-                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('HOT')).length || 1897} Leads</strong>
+                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('HOT')).length} Leads</strong>
                         </div>
                       </div>
                       <span className="text-lg font-bold opacity-80">&rsaquo;</span>
@@ -1574,7 +1574,7 @@ export default function SalesManagerDashboard() {
                         </div>
                         <div className="text-left">
                           <span className="text-[9px] uppercase font-mono font-bold tracking-wider text-amber-100 block">WARM PIPELINE</span>
-                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('WARM')).length || 1} Leads</strong>
+                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('WARM')).length} Leads</strong>
                         </div>
                       </div>
                       <span className="text-lg font-bold opacity-80">&rsaquo;</span>
@@ -1588,7 +1588,7 @@ export default function SalesManagerDashboard() {
                         </div>
                         <div className="text-left">
                           <span className="text-[9px] uppercase font-mono font-bold tracking-wider text-sky-100 block">COLD / NURTURING</span>
-                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('COLD')).length || 1} Leads</strong>
+                          <strong className="text-lg font-mono font-black">{allLeads.filter(l => calculateLeadPriorityTemp(l).label.startsWith('COLD')).length} Leads</strong>
                         </div>
                       </div>
                       <span className="text-lg font-bold opacity-80">&rsaquo;</span>
@@ -1600,7 +1600,7 @@ export default function SalesManagerDashboard() {
                     {[
                       {
                         label: 'TOTAL LEADS',
-                        val: (allLeads.length || metrics.totalLeads || 1248).toLocaleString('en-IN'),
+                        val: (allLeads.length || metrics.totalLeads || 0).toLocaleString('en-IN'),
                         sub: 'All Sources',
                         icon: '📱',
                         color: 'bg-purple-500/10 text-purple-600 border-purple-500/20'
@@ -1610,7 +1610,7 @@ export default function SalesManagerDashboard() {
                         val: formatCurrency(
                           allLeads
                             .filter(l => ['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED'].includes((l.stage || '').toUpperCase()))
-                            .reduce((sum, l) => sum + (Number(l.leadValue) || 0), 0) || metrics.totalRevenue || 9000000
+                            .reduce((sum, l) => sum + (Number(l.leadValue) || 0), 0) || metrics.totalRevenue || 0
                         ),
                         sub: 'Closed Deal Value',
                         icon: '₹',
@@ -1618,21 +1618,21 @@ export default function SalesManagerDashboard() {
                       },
                       {
                         label: 'WON DEALS',
-                        val: (allLeads.filter(l => ['CLOSED_WON', 'DEAL_WON'].includes((l.stage || '').toUpperCase())).length || metrics.wonLeads || 1).toLocaleString('en-IN'),
+                        val: (allLeads.filter(l => ['CLOSED_WON', 'DEAL_WON'].includes((l.stage || '').toUpperCase())).length || metrics.wonLeads || 0).toLocaleString('en-IN'),
                         sub: 'Closed on Stage',
                         icon: '📄',
                         color: 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                       },
                       {
                         label: 'ACTIVE PIPELINE',
-                        val: (allLeads.filter(l => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase())).length || metrics.pendingLeads || 1247).toLocaleString('en-IN'),
+                        val: (allLeads.filter(l => !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((l.stage || '').toUpperCase())).length || metrics.pendingLeads || 0).toLocaleString('en-IN'),
                         sub: 'In Process',
                         icon: '🛢️',
                         color: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
                       },
                       {
                         label: 'SALES TEAM',
-                        val: (teamEmployees.length || metrics.totalExecutives || 2).toLocaleString('en-IN'),
+                        val: (teamEmployees.length || metrics.totalExecutives || 0).toLocaleString('en-IN'),
                         sub: 'Active Department',
                         icon: '🏢',
                         color: 'bg-rose-500/10 text-rose-600 border-rose-500/20'
