@@ -838,27 +838,6 @@ export function getCrmMainNavItems(user) {
 
 
 
-    /*
-     * Management dashboard.
-     *
-     * Plain management/admin users receive one entry.
-     * Founder gets the Founder-specific entry below.
-     * CEO remains on the dedicated CEO dashboard.
-     */
-    (
-      admin &&
-      !isCEO &&
-      !isFounder
-    ) && {
-      to:
-        '/crm/founder',
-
-      label:
-        'Founder Dashboard',
-
-      icon:
-        FiCommand
-    },
 
 
     isFounder && {
