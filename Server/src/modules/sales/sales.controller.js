@@ -132,7 +132,7 @@ async function submitDailyWorkLog(req, res, next) {
     socketService.emitToAll('work_log_submitted', logObj);
 
     // Format & broadcast real-time activity card to Sales Trial Chat & Manager Chat
-    const chatMessageText = `📊 Daily Work Activity Logged:\n• Calls: ${log.numberOfCalls}\n• Conversions: ${log.numberOfConversions}\n• Sales: ${log.numberOfSales}${log.note ? `\n• Notes: "${log.note}"` : ''}`;
+    const chatMessageText = ` Daily Work Activity Logged:\n• Calls: ${log.numberOfCalls}\n• Conversions: ${log.numberOfConversions}\n• Sales: ${log.numberOfSales}${log.note ? `\n• Notes: "${log.note}"` : ''}`;
     
     const formattedChatMsg = {
       _id: `log_msg_${log._id}`,

@@ -35,8 +35,8 @@ const accountsToUpsert = [
   },
   {
     employeeId: 'EMP-ADM-001',
-    fullName: 'System Admin',
-    name: 'System Admin',
+    fullName: 'bd',
+    name: 'mm',
     email: 'admin@indiatradeoverseas.com',
     role: 'ADMIN',
     department: 'ADMIN',

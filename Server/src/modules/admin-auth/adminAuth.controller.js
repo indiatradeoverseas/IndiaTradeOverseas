@@ -11,6 +11,10 @@ const { recordAudit } = require('../security-audit/auditLog.service');
 const { raiseAlert } = require('../security-audit/securityAlert.service');
 const { verifyGoogleIdToken } = require('../../utils/googleAuth');
 
+const { generateOtp, getOtpHtml } = require('../../utils/otp');
+const { sendEmail } = require('../../utils/mailer');
+const otpModel = require('../auth/Model.otp');
+
 const ADMIN_ROLES = Object.freeze({
   ADMIN: 'ADMIN',
   CEO: 'CEO',
@@ -140,6 +144,33 @@ async function adminLogin(req, res, next) {
         return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid email or password');
       }
 
+      const is2faRequired = process.env.REQUIRE_2FA === 'true' || process.env.MANDATE_FOUNDER_OTP === 'true';
+      if (is2faRequired) {
+        const otp = generateOtp();
+        const otpHash = await bcrypt.hash(otp, 10);
+        await otpModel.deleteMany({ email: normalizedEmail });
+        await otpModel.create({
+          email: normalizedEmail,
+          user: admin._id,
+          otpHash
+        });
+
+        sendEmail(
+          normalizedEmail,
+          'India Trade Overseas - Founder 2FA Security Code',
+          `Your 2FA Security Code is ${otp}`,
+          getOtpHtml(otp, normalizedEmail)
+        ).catch(e => console.warn('[2FA Email Notice]:', e.message));
+
+        console.log(`\n==================================================\n[FOUNDER 2FA OTP GENERATED]\nTarget Account: ${normalizedEmail}\n2FA Security OTP Code: ${otp}\n==================================================\n`);
+
+        return ok(res, {
+          requiresOtp: true,
+          email: normalizedEmail,
+          role: resolvedRole
+        }, '2FA verification required. Security OTP sent to registered email.', 200, req);
+      }
+
       admin.failedLoginCount = 0;
       admin.lastLoginAt = new Date();
       await admin.save();
@@ -174,6 +205,33 @@ async function adminLogin(req, res, next) {
       const matched = await bcrypt.compare(password, passwordField);
       if (!matched) {
         return fail(res, 401, 'AUTH_INVALID_CREDENTIALS', 'Invalid email or password');
+      }
+
+      const is2faRequired = process.env.REQUIRE_2FA === 'true' || process.env.MANDATE_FOUNDER_OTP === 'true';
+      if (is2faRequired) {
+        const otp = generateOtp();
+        const otpHash = await bcrypt.hash(otp, 10);
+        await otpModel.deleteMany({ email: normalizedEmail });
+        await otpModel.create({
+          email: normalizedEmail,
+          user: fallbackAccount._id,
+          otpHash
+        });
+
+        sendEmail(
+          normalizedEmail,
+          'India Trade Overseas - Founder 2FA Security Code',
+          `Your 2FA Security Code is ${otp}`,
+          getOtpHtml(otp, normalizedEmail)
+        ).catch(e => console.warn('[2FA Email Notice]:', e.message));
+
+        console.log(`\n==================================================\n[FOUNDER 2FA OTP GENERATED]\nTarget Account: ${normalizedEmail}\n2FA Security OTP Code: ${otp}\n==================================================\n`);
+
+        return ok(res, {
+          requiresOtp: true,
+          email: normalizedEmail,
+          role: resolvedRole
+        }, '2FA verification required. Security OTP sent to registered email.', 200, req);
       }
       const accessToken = tokenService.generateAccessToken(fallbackAccount);
       const rawRefreshToken = crypto.randomBytes(40).toString('hex');
@@ -355,4 +413,149 @@ async function adminGoogleLogin(req, res, next) {
   }
 }
 
-module.exports = { adminLogin, adminGoogleLogin };
+async function verifyAdminOtp(req, res, next) {
+  try {
+    const { email, otp } = req.body;
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || '';
+
+    if (!email || !otp) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Email and OTP code are required');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const otpDoc = await otpModel.findOne({ email: normalizedEmail }).sort({ createdAt: -1 });
+
+    if (!otpDoc) {
+      return fail(res, 400, 'INVALID_OTP', 'No active 2FA security code found or code expired. Please request a new code.');
+    }
+
+    const isMatched = await bcrypt.compare(String(otp).trim(), otpDoc.otpHash);
+    if (!isMatched) {
+      return fail(res, 401, 'INVALID_OTP', 'Invalid 2FA security code. Please check and try again.');
+    }
+
+    // Clear used OTP
+    await otpModel.deleteMany({ email: normalizedEmail });
+
+    // Fetch account details
+    const User = require('../users/user.model');
+    const Employee = require('../employee/employee.model');
+
+    let admin = await Admin.findOne({ email: normalizedEmail });
+    let fallbackAccount = null;
+
+    if (!admin) {
+      fallbackAccount = await User.findOne({ email: normalizedEmail }) || await Employee.findOne({ email: normalizedEmail });
+    }
+
+    const targetAccount = admin || fallbackAccount;
+    if (!targetAccount) {
+      return fail(res, 404, 'NOT_FOUND', 'Founder / Admin account not found.');
+    }
+
+    if (admin) {
+      admin.failedLoginCount = 0;
+      admin.lastLoginAt = new Date();
+      await admin.save();
+
+      await recordAudit({
+        actorId: admin._id,
+        actionType: 'LOGIN_SUCCESS_2FA',
+        entityType: 'ADMIN',
+        entityId: admin._id.toString(),
+        severity: 'LOW',
+        ipAddress,
+        metadata: { lastLoginAt: admin.lastLoginAt, method: '2fa_otp' }
+      });
+
+      const accessToken = tokenService.generateAccessToken(admin);
+      const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+      const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
+
+      const session = await sessionModel.create({
+        user: admin._id,
+        refreshTokenHash: tokenHash,
+        ip: ipAddress,
+        userAgent: req.headers['user-agent'] || 'unknown'
+      });
+
+      const refreshToken = jwt.sign(
+        { sub: admin._id.toString(), sid: session._id.toString(), raw: rawRefreshToken },
+        env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return ok(res, {
+        user: sanitizeAdmin(admin),
+        token: accessToken,
+        refreshToken
+      }, 'Founder 2FA authentication successful', 200, req);
+    } else if (fallbackAccount) {
+      const accessToken = tokenService.generateAccessToken(fallbackAccount);
+      const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+      const tokenHash = await bcrypt.hash(rawRefreshToken, 10);
+
+      const session = await sessionModel.create({
+        user: fallbackAccount._id,
+        refreshTokenHash: tokenHash,
+        ip: ipAddress,
+        userAgent: req.headers['user-agent'] || 'unknown'
+      });
+
+      const refreshToken = jwt.sign(
+        { sub: fallbackAccount._id.toString(), sid: session._id.toString(), raw: rawRefreshToken },
+        env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      const userObj = {
+        _id: fallbackAccount._id,
+        fullName: fallbackAccount.fullName || fallbackAccount.name,
+        name: fallbackAccount.name || fallbackAccount.fullName,
+        email: fallbackAccount.email,
+        role: fallbackAccount.role || 'ADMIN',
+        department: fallbackAccount.department || 'ADMIN',
+        position: fallbackAccount.position || fallbackAccount.role
+      };
+
+      return ok(res, {
+        user: userObj,
+        token: accessToken,
+        refreshToken
+      }, 'Founder 2FA authentication successful', 200, req);
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function requestAdminOtp(req, res, next) {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return fail(res, 400, 'VALIDATION_FAILED', 'Email is required');
+    }
+    const normalizedEmail = email.toLowerCase().trim();
+    const otp = generateOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    await otpModel.deleteMany({ email: normalizedEmail });
+    await otpModel.create({ email: normalizedEmail, otpHash });
+
+    sendEmail(
+      normalizedEmail,
+      'India Trade Overseas - Resent 2FA Security Code',
+      `Your 2FA Security Code is ${otp}`,
+      getOtpHtml(otp, normalizedEmail)
+    ).catch(e => console.warn('[2FA Resend Notice]:', e.message));
+
+    console.log(`\n==================================================\n[FOUNDER 2FA OTP RESENT]\nTarget Account: ${normalizedEmail}\nNew 2FA Security Code: ${otp}\n==================================================\n`);
+
+    return ok(res, { success: true }, 'New 2FA Security Code sent to email.', 200, req);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { adminLogin, adminGoogleLogin, verifyAdminOtp, requestAdminOtp };
+

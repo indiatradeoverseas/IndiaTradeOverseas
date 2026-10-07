@@ -1442,8 +1442,11 @@ export default function FounderDashboard() {
                           <td className="py-3 px-3 text-[var(--crm-heading)]">{wonCount} Deals</td>
                           <td className="py-3 px-3 font-bold text-pink-600">{convPct}%</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${idx === 0 ? 'bg-amber-100 border border-amber-300 text-amber-900' : 'bg-slate-100 border border-slate-300 text-slate-700'}`}>
-                              #{idx + 1} {idx === 0 ? '🏆 TOP' : 'ACTIVE'}
+                            <span className={`px-2.5 py-1 rounded-md text-[9.5px] font-extrabold uppercase inline-flex items-center gap-1 whitespace-nowrap ${idx === 0
+                                ? 'bg-emerald-600 border border-emerald-500 text-white shadow-sm'
+                                : 'bg-slate-100 border border-slate-300 text-slate-700 text-[8px] px-2 py-0.5'
+                              }`}>
+                              #{idx + 1} {idx === 0 ? '🏆 TOP PERFORMER' : 'ACTIVE'}
                             </span>
                           </td>
                         </tr>

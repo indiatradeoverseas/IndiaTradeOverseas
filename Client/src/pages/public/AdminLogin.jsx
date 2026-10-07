@@ -15,7 +15,13 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  const { adminLogin } = useAuth();
+  // 2FA OTP State
+  const [step, setStep] = useState('LOGIN'); // 'LOGIN' | '2FA_OTP'
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const { adminLogin, verifyAdminOtp, requestAdminOtp } = useAuth();
   const navigate = useNavigate();
 
   const handleRedirect = (userObj) => {
@@ -41,21 +47,60 @@ const AdminLogin = () => {
     setLoading(true);
     try {
       const response = await adminLogin(formData);
-      if (response.success) {
-        toast.success('Welcome back!', {
-          icon: '🛡️',
-          style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #C5CBD3' }
-        });
+
+      if (response.success && response.data?.requiresOtp) {
+        toast.success('2FA OTP code sent to your registered email', { style: toastStyle });
+        setStep('2FA_OTP');
+      } else if (response.success) {
+        toast.success('Welcome back!', { style: toastStyle });
         pushDataLayerEvent('login', { method: 'admin' });
         handleRedirect(response.data?.user);
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Login failed. Please check your credentials.';
-      toast.error(errorMsg, {
-        style: { borderRadius: '4px', background: '#0E1116', color: '#F2F4F7', border: '1px solid #ef4444' }
-      });
+      toast.error(errorMsg, { style: toastErrorStyle });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length < 4) {
+      return toast.error('Please enter valid 2FA security code', { style: toastErrorStyle });
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await verifyAdminOtp({
+        email: formData.email,
+        otp: otpCode.trim()
+      });
+
+      if (response.success) {
+        toast.success('2FA Verified! Welcome back ', { style: toastStyle });
+        pushDataLayerEvent('login', { method: 'admin_2fa' });
+        handleRedirect(response.data?.user);
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Invalid 2FA security code. Please check and retry.';
+      toast.error(errorMsg, { style: toastErrorStyle });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    try {
+      const res = await requestAdminOtp({ email: formData.email });
+      if (res && res.success) {
+        toast.success('New 2FA Security Code sent to email 📧', { style: toastStyle });
+      }
+    } catch (err) {
+      toast.error('Failed to resend 2FA code. Please try again.', { style: toastErrorStyle });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -74,7 +119,7 @@ const AdminLogin = () => {
 
       {/* MOBILE ONLY BACKGROUND IMAGE & CINEMATIC OVERLAY */}
       <div className="absolute inset-0 lg:hidden z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[#040A12]/70 z-10" /> {/* Dark tint mask for form readability */}
+        <div className="absolute inset-0 bg-[#040A12]/70 z-10" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#040A12]/80 via-transparent to-[#040A12] z-10" />
         <img
           src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1000&q=70"
@@ -95,104 +140,170 @@ const AdminLogin = () => {
             <h1 className="text-sm font-serif font-medium text-[#F2F4F7] tracking-wider uppercase">
               India Trade Overseas
             </h1>
-            <p className="text-[9px] text-[#6D7886] tracking-widest uppercase">Secure Portal</p>
+            <p className="text-[9px] text-[#6D7886] tracking-widest uppercase">Secure Founder Terminal</p>
           </div>
         </div>
 
         {/* Central Form Container */}
         <div className="max-w-sm w-full mx-auto my-auto py-12 relative z-20">
 
-          {/* Header Texts with Entrance Motion */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "linear", duration: 0.5, delay: 0.1 }}
-            className="space-y-2 mb-8"
-          >
-            <h2 className="text-3xl font-serif text-[#F2F4F7] font-light tracking-tight">
-              Founder &amp; Admin Login
-            </h2>
+          {/* STEP 1: LOGIN FORM */}
+          {step === 'LOGIN' ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "linear", duration: 0.5, delay: 0.1 }}
+                className="space-y-2 mb-8"
+              >
+                <h2 className="text-3xl font-serif text-[#F2F4F7] font-light tracking-tight">
+                  Founder &amp; Admin Login
+                </h2>
+              </motion.div>
 
-          </motion.div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: "linear", duration: 0.5, delay: 0.2 }}
+                  className="space-y-4"
+                >
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
+                      <FiMail className="h-4 w-4 text-[#6D7886] group-focus-within:text-[#F2F4F7] transition-colors" />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="Administrator Email"
+                      className="block w-full pl-10 pr-4 py-3 border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 backdrop-blur-sm text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                    />
+                  </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
+                      <FiLock className="h-4 w-4 text-[#6D7886] group-focus-within:text-[#F2F4F7] transition-colors" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Account Password"
+                      className="block w-full pl-10 pr-10 py-3 border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 backdrop-blur-sm text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#6D7886] hover:text-[#F2F4F7] transition-colors"
+                    >
+                      {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  <div className="text-right">
+                    <Link to="/forgot-password" className="text-[11px] text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-light">
+                      Forgot Password?
+                    </Link>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: "linear", duration: 0.5, delay: 0.35 }}
+                >
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full mt-2 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#0E1116] text-xs font-semibold tracking-widest py-3.5 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {loading ? 'Authenticating Terminal...' : 'Sign In'}
+                    {!loading && <FiArrowRight className="h-3.5 w-3.5" />}
+                  </button>
+                </motion.div>
+              </form>
+
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "linear", duration: 0.5, delay: 0.4 }}
+                className="mt-5"
+              >
+                <GoogleAuthButton portal="admin" onSuccess={handleGoogleSuccess} onError={handleGoogleError} disabled={loading} />
+              </motion.div>
+            </>
+          ) : (
+            /* STEP 2: 2FA OTP VERIFICATION VIEW */
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "linear", duration: 0.5, delay: 0.2 }}
-              className="space-y-4"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              {/* Minimalist Corporate Input Field */}
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
-                  <FiMail className="h-4 w-4 text-[#6D7886] group-focus-within:text-[#F2F4F7] transition-colors" />
+              <div className="space-y-2 border-b border-[#C5CBD3]/10 pb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono rounded-full uppercase tracking-wider">
+                  <FiShield size={12} />
+                  <span>Two-Factor Security Enforced</span>
                 </div>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Administrator Email"
-                  className="block w-full pl-10 pr-4 py-3 border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 backdrop-blur-sm text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
-                />
+                <h2 className="text-2xl font-serif text-[#F2F4F7] font-light tracking-tight mt-2">
+                  Enter 2FA Security Code
+                </h2>
+                <p className="text-xs text-[#6D7886] leading-relaxed">
+                  A 6-digit verification code has been dispatched to{' '}
+                  <strong className="text-[#F2F4F7] font-mono">{formData.email}</strong>
+                </p>
               </div>
 
-              {/* Minimalist Password Input Field */}
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
-                  <FiLock className="h-4 w-4 text-[#6D7886] group-focus-within:text-[#F2F4F7] transition-colors" />
+              <form onSubmit={handleOtpSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] text-[#6D7886] uppercase tracking-widest font-mono mb-2">
+                    🔐 6-Digit OTP Security Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="e.g. 123456"
+                    className="block w-full text-center text-xl font-mono tracking-[0.5em] py-3.5 border border-[#C5CBD3]/30 rounded-sm bg-[#0E1116] text-[#F2F4F7] placeholder-[#6D7886]/40 focus:outline-none focus:border-amber-500 transition-all shadow-inner"
+                  />
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Account Password"
-                  className="block w-full pl-10 pr-10 py-3 border border-[#C5CBD3]/20 rounded-sm bg-[#0E1116]/80 backdrop-blur-sm text-xs text-[#F2F4F7] placeholder-[#6D7886] focus:outline-none focus:border-[#C5CBD3]/50 focus:ring-1 focus:ring-[#C5CBD3]/20 transition-all"
-                />
+
+                <button
+                  type="submit"
+                  disabled={otpLoading || otpCode.length < 6}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold tracking-widest py-3.5 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 border border-emerald-500"
+                >
+                  {otpLoading ? 'Verifying 2FA Code...' : 'VERIFY & ACCESS TERMINAL'}
+                  {!otpLoading && <FiArrowRight className="h-3.5 w-3.5" />}
+                </button>
+              </form>
+
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#C5CBD3]/10">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#6D7886] hover:text-[#F2F4F7] transition-colors"
+                  onClick={handleResendOtp}
+                  disabled={resending}
+                  className="text-amber-400 hover:text-amber-300 hover:underline font-mono text-[11px] disabled:opacity-50 cursor-pointer"
                 >
-                  {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+                  {resending ? 'Resending OTP...' : '📩 Resend Security Code'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('LOGIN')}
+                  className="text-[#6D7886] hover:text-[#F2F4F7] hover:underline text-[11px] cursor-pointer"
+                >
+                  ← Back to Password Login
                 </button>
               </div>
-
-              {/* Forgot Password Link */}
-              <div className="text-right">
-                <Link to="/forgot-password" className="text-[11px] text-[#6D7886] hover:text-[#F2F4F7] hover:underline font-light">
-                  Forgot Password?
-                </Link>
-              </div>
             </motion.div>
-
-            {/* Submission Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "linear", duration: 0.5, delay: 0.35 }}
-            >
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 bg-[#F2F4F7] hover:bg-[#C5CBD3] text-[#0E1116] text-xs font-semibold tracking-widest py-3.5 rounded-sm transition-all shadow-md uppercase cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {loading ? 'Authenticating Terminal...' : 'Sign In'}
-                {!loading && <FiArrowRight className="h-3.5 w-3.5" />}
-              </button>
-            </motion.div>
-          </form>
-
-          {/* Google Sign-In */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "linear", duration: 0.5, delay: 0.4 }}
-            className="mt-5"
-          >
-            <GoogleAuthButton portal="admin" onSuccess={handleGoogleSuccess} onError={handleGoogleError} disabled={loading} />
-          </motion.div>
+          )}
 
           {/* Navigation Links Footer */}
           <motion.div

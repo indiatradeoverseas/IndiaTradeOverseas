@@ -340,10 +340,12 @@ export default function HrManagerDashboard() {
       socket.on('attendance_updated', handleUpdate);
     }
     window.addEventListener('attendance_updated', handleUpdate);
+    window.addEventListener('attendance_updated_event', handleUpdate);
 
     return () => {
       if (socket) socket.off('attendance_updated', handleUpdate);
       window.removeEventListener('attendance_updated', handleUpdate);
+      window.removeEventListener('attendance_updated_event', handleUpdate);
     };
   }, []);
 

@@ -39,8 +39,8 @@ const testAccounts = [
   },
   {
     employeeId: 'EMP-ADM-001',
-    fullName: 'System Admin',
-    name: 'System Admin',
+    fullName: 'mm',
+    name: 'mm Admin',
     email: 'admin@indiatradeoverseas.com',
     password: UNIFIED_PASSWORD,
     role: 'ADMIN',

@@ -460,7 +460,8 @@ function getLeadCreatedAnalyticsEventId(submissionId) {
 ============================================================ */
 
 async function syncPersistedWebsiteLeadAnalytics(lead) {
-  if (!lead?._id || !lead?.submissionId) {
+  const submissionId = lead?.submissionId || lead?.submission_id || lead?.leadCode || (lead?._id ? String(lead._id) : null);
+  if (!lead?._id || !submissionId) {
     throw new Error(
       'Persisted website Lead is missing analytics reconciliation identifiers.'
     );
@@ -485,7 +486,7 @@ async function syncPersistedWebsiteLeadAnalytics(lead) {
         leadId: lead._id,
         entityType: 'LEAD',
         entityId: lead.leadCode || String(lead._id),
-        idempotencyKey: getLeadCreatedAnalyticsEventId(lead.submissionId),
+        idempotencyKey: getLeadCreatedAnalyticsEventId(submissionId),
         provider: 'FIRST_PARTY_ANALYTICS',
         metadata: {
           reason: 'OPTIONAL_TRACKING_NOT_CONSENTED',
@@ -507,14 +508,14 @@ async function syncPersistedWebsiteLeadAnalytics(lead) {
     await linkAnalyticsEventsToLead({
       leadId: lead._id,
       leadCode: lead.leadCode,
-      submissionId: lead.submissionId,
+      submissionId,
       analyticsSessionId
     });
   }
 
   const eventId =
     getLeadCreatedAnalyticsEventId(
-      lead.submissionId
+      submissionId
     );
 
   let result;
@@ -528,7 +529,7 @@ async function syncPersistedWebsiteLeadAnalytics(lead) {
         occurredAt: lead.createdAt || new Date(),
 
         analyticsSessionId,
-        submissionId: lead.submissionId,
+        submissionId,
 
         leadId: lead._id,
         leadCode: lead.leadCode,
