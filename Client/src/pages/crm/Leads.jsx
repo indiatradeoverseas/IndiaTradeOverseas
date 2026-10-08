@@ -2342,7 +2342,7 @@ export default function Leads() {
               onClick={() => setLeadTab('ALL')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'ALL'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               <span>All Lead</span>
@@ -2356,7 +2356,7 @@ export default function Leads() {
               onClick={() => setLeadTab('WON_DELIVERED')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'WON_DELIVERED'
                   ? 'bg-emerald-600 text-white border-emerald-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               <span>DEAL WON</span>
@@ -2370,7 +2370,7 @@ export default function Leads() {
               onClick={() => setLeadTab('ORDER_CONFIRM')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'ORDER_CONFIRM'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               <span>order Confirm</span>
@@ -2384,7 +2384,7 @@ export default function Leads() {
               onClick={() => setLeadTab('NEW_LEAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'NEW_LEAD'
                   ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               <span>New Lead</span>
@@ -2398,7 +2398,7 @@ export default function Leads() {
               onClick={() => setLeadTab('WORKLOAD')}
               className={`px-3 py-1.5 text-xs font-bold uppercase rounded-sm transition cursor-pointer flex items-center gap-1.5 border whitespace-nowrap ${leadTab === 'WORKLOAD'
                   ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               <span>👥 Employee Workload</span>
@@ -2445,7 +2445,7 @@ export default function Leads() {
                 onClick={() => setFilterAssignee(filterAssignee === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
                 className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${filterAssignee === 'UNASSIGNED'
                     ? 'bg-amber-600 text-white border-amber-700 font-black shadow-md'
-                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200 font-black'
+                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 font-black'
                   }`}
               >
                 <FiAlertCircle size={14} className={filterAssignee === 'UNASSIGNED' ? 'text-white' : 'text-amber-600 dark:text-amber-400'} />
@@ -2462,7 +2462,7 @@ export default function Leads() {
               onClick={() => setFilterAssignee(filterAssignee === 'MY' ? 'ALL' : 'MY')}
               className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${filterAssignee === 'MY'
                   ? 'bg-emerald-600 text-white border-emerald-700 font-black shadow-md'
-                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 font-black'
+                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 font-black'
                 }`}
             >
               <FiUser size={14} className={filterAssignee === 'MY' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'} />
@@ -2482,7 +2482,7 @@ export default function Leads() {
                   onClick={() => setFilterAssignee(isSelected ? 'ALL' : emp.id)}
                   className={`px-3.5 py-2 rounded-lg border text-[10px] font-black uppercase transition shrink-0 flex items-center gap-2 cursor-pointer shadow-xs ${isSelected
                       ? 'bg-cyan-600 text-white border-cyan-700 font-black shadow-md'
-                      : 'bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-200 border-sky-300 dark:border-sky-700 hover:bg-sky-200 font-black'
+                      : 'bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-200 border-sky-300 dark:border-sky-700 font-black'
                     }`}
                 >
                   <FiUserCheck size={14} className={isSelected ? "text-white" : "text-sky-600 dark:text-sky-400"} />
@@ -2538,7 +2538,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('ALL')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer shrink-0 ${filterPriority === 'ALL'
                   ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               🌐 ALL LEADS (Date Wise)
@@ -2547,7 +2547,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('HOT')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'HOT'
                   ? 'bg-rose-600 text-white border-rose-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               🔥 Hot
@@ -2556,7 +2556,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('WARM')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'WARM'
                   ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               ⚡ Warm
@@ -2565,7 +2565,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('COLD')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'COLD'
                   ? 'bg-cyan-600 text-white border-cyan-400 font-bold shadow-sm'
-                  : 'bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 font-bold'
+                  : 'bg-blue-200 text-blue-950 border border-blue-300 font-bold'
                 }`}
             >
               ❄️ Cold
@@ -2574,7 +2574,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('DEAD')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'DEAD'
                   ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-bold shadow-sm'
-                  : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700 hover:bg-zinc-400 font-bold'
+                  : 'bg-zinc-300 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700 font-bold'
                 }`}
             >
               💀 Dead (Expired Date)
@@ -2583,7 +2583,7 @@ export default function Leads() {
               onClick={() => setFilterPriority('DUPLICATE')}
               className={`px-3 py-2 text-[10px] font-bold uppercase rounded-sm border transition cursor-pointer flex items-center gap-1 shrink-0 ${filterPriority === 'DUPLICATE'
                   ? 'bg-purple-600 text-white border-purple-400 font-bold shadow-sm ring-2 ring-purple-300'
-                  : 'bg-purple-100 text-purple-950 border border-purple-300 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700 font-bold'
+                  : 'bg-purple-100 text-purple-950 border border-purple-300 dark:bg-purple-900/40 dark:text-purple-200 dark:border-purple-700 font-bold'
                 }`}
             >
               ⚠️ Duplicates ({duplicateLeadIds.size})

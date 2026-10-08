@@ -279,6 +279,23 @@ aside.crm-sidebar,
   color: #FFFFFF !important;
 }
 
+/* Active Sidebar Nav Capsule - High Contrast Ultra-Dark Navy Text (#0A1B36) on White Capsule */
+aside.crm-sidebar .nav-active-capsule,
+.crm-portal aside.crm-sidebar .nav-active-capsule,
+aside.crm-sidebar a.nav-active-capsule,
+.crm-portal aside.crm-sidebar a.nav-active-capsule {
+  background-color: #FFFFFF !important;
+  color: #0A1B36 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+aside.crm-sidebar .nav-active-capsule *,
+.crm-portal aside.crm-sidebar .nav-active-capsule * {
+  color: #0A1B36 !important;
+  font-weight: 800 !important;
+}
+
 /* ITC Brand Title & Subtitle Theme Color Control */
 .itc-brand-title {
   color: #000000 !important;

@@ -180,7 +180,7 @@ export default function HrWorkLogWidget({ showSubmissionForm = true, title = "HR
             {/* Detailed Summary Paragraph Box */}
             <div>
               <label className="block text-[10px] font-bold text-[var(--crm-heading)] uppercase mb-1">
-                📝 Work Summary Paragraph (Detailed Activity & Remarks) *
+                 Work Summary Paragraph (Detailed Activity & Remarks) *
               </label>
               <textarea
                 rows={3}
@@ -188,7 +188,7 @@ export default function HrWorkLogWidget({ showSubmissionForm = true, title = "HR
                 value={workSummary}
                 onChange={(e) => setWorkSummary(e.target.value)}
                 className="w-full bg-[var(--crm-bg)] border border-[var(--crm-line)] text-[var(--crm-heading)] font-sans text-xs px-3 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition resize-none leading-relaxed"
-                placeholder="Write detailed HR daily work report (e.g. Conducted 5 candidate screening calls, finalized offer letter for Senior Accountant, updated attendance records and payroll query resolution...)"
+                placeholder="Enter the details of the work done today..."
               />
             </div>
 

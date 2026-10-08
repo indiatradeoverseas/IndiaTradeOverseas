@@ -445,7 +445,7 @@ export default function Followup() {
         <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <button
             onClick={() => setShowCallModal(true)}
-            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-3 sm:px-3.5 py-2 rounded transition cursor-pointer shadow-sm w-full sm:w-auto whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 bg-rose-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider px-3 sm:px-3.5 py-2 rounded transition cursor-pointer shadow-sm w-full sm:w-auto whitespace-nowrap"
           >
             <FiMic size={13} className="animate-pulse shrink-0" /> Upload Call Recording
           </button>
@@ -462,7 +462,7 @@ export default function Followup() {
 
         <div 
           onClick={() => setStatusFilter('PENDING')}
-          className="bg-[var(--crm-bg-raised)] border border-amber-900/40 hover:border-amber-500/60 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
+          className="bg-[var(--crm-bg-raised)] border border-amber-900/40 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
         >
           <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
             <FiClock size={10} className="shrink-0" /> PENDING FOLLOW-UPS
@@ -473,7 +473,7 @@ export default function Followup() {
 
         <div 
           onClick={() => setStatusFilter('COMPLETED')}
-          className="bg-[var(--crm-bg-raised)] border border-emerald-900/40 hover:border-emerald-500/60 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
+          className="bg-[var(--crm-bg-raised)] border border-emerald-900/40 p-3 sm:p-4 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer transition"
         >
           <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
             <FiCheckCircle size={10} className="shrink-0" /> COMPLETED FOLLOW-UPS
@@ -498,7 +498,7 @@ export default function Followup() {
             className={`shrink-0 px-3 sm:px-4 py-2 rounded text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
               statusFilter === 'ALL'
                 ? 'bg-teal-600 text-white shadow-sm'
-                : 'text-[var(--crm-ink-faint)] hover:text-white'
+                : 'text-[var(--crm-ink-faint)]'
             }`}
           >
             All Follow-ups <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] bg-black/40 rounded-full">{recordings.length}</span>
@@ -509,7 +509,7 @@ export default function Followup() {
             className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border shadow-xs whitespace-nowrap ${
               statusFilter === 'PENDING'
                 ? 'bg-amber-600 text-white border-amber-700 shadow-md'
-                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200'
+                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700'
             }`}
           >
             ⏱️ <span className="hidden xs:inline">Followup</span> Pending <span className={`px-1.5 py-0.5 text-[8px] sm:text-[9px] rounded-full font-black ${statusFilter === 'PENDING' ? 'bg-white/25 text-white' : 'bg-amber-600 text-white'}`}>{pendingCount}</span>
@@ -520,7 +520,7 @@ export default function Followup() {
             className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border shadow-xs whitespace-nowrap ${
               statusFilter === 'COMPLETED'
                 ? 'bg-emerald-600 text-white border-emerald-700 shadow-md'
-                : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
+                : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
             }`}
           >
             ✓ <span className="hidden xs:inline">Followup</span> Complete <span className={`px-1.5 py-0.5 text-[8px] sm:text-[9px] rounded-full font-black ${statusFilter === 'COMPLETED' ? 'bg-white/25 text-white' : 'bg-emerald-600 text-white'}`}>{completedCount}</span>

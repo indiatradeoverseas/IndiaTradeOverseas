@@ -702,7 +702,7 @@ export default function LeadDetail() {
               <h3 className="text-base font-serif font-normal text-[var(--crm-heading)] flex items-center gap-2">
                 Lead Temperature Status:
                 <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${lead.priority === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !['CLOSED_WON', 'DEAL_WON', 'CLOSED_LOST', 'DEAL_LOST'].includes((lead.stage || '').toUpperCase())) ? 'bg-zinc-900 text-zinc-300 border-zinc-700 shadow-sm' :
-                  lead.priority === 'HOT' ? 'bg-red-900 text-red-400 ' :
+                  lead.priority === 'HOT' ? 'bg-red-800 text-white ' :
                     lead.priority === 'WARM' ? 'bg-amber-500 text-white ' :
                       'bg-blue-900 text-white '
                   }`}>
