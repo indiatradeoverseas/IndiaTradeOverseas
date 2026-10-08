@@ -737,86 +737,11 @@ export default function ItDashboard() {
               </div>
             </div>
 
-            {/* Split Grid: Attendance Widget & Infrastructure Health */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Left Widget: Live Duty & Attendance Tracker */}
+            {/* Infrastructure Health Telemetry Panel */}
+            <div className="w-full">
               <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
-                    <FiClock className="text-cyan-500" />
-                    Live Biometric Duty Attendance
-                  </h4>
-                  <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                    REALTIME LOG
-                  </span>
-                </div>
-
-                <div className="bg-[var(--crm-bg-sunken)] p-4 rounded border border-[var(--crm-line)] flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] block mb-1">Shift Duration</span>
-                    <span className="text-2xl font-mono font-extrabold text-[var(--crm-heading)]">
-                      {elapsedTime}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-[var(--crm-ink-faint)] block mb-1">Check-in Time</span>
-                    <span className="text-xs font-bold text-emerald-500 font-mono">
-                      {todayAttendance?.checkIn ? new Date(todayAttendance.checkIn).toLocaleTimeString() : 'Not Checked In'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {!todayAttendance?.checkIn || todayAttendance?.checkOut ? (
-                    <button
-                      onClick={handleCheckIn}
-                      disabled={attLoading}
-                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <FiCheckCircle size={15} />
-                      <span>CHECK IN TODAY</span>
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleCheckOut}
-                        disabled={attLoading}
-                        className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        <FiXCircle size={15} />
-                        <span>CHECK OUT SHIFT</span>
-                      </button>
-
-                      {todayAttendance?.lunchStart && !todayAttendance?.lunchEnd ? (
-                        <button
-                          onClick={() => handleLunchToggle(false)}
-                          disabled={attLoading}
-                          className="py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded transition flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <FiCoffee size={14} />
-                          <span>End Lunch</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleLunchToggle(true)}
-                          disabled={attLoading}
-                          className="py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded transition flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <FiCoffee size={14} />
-                          <span>Lunch Break</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Widget: Infrastructure Server Health */}
-              <div className="bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] p-5 rounded-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-[var(--crm-line)] pb-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--crm-heading)] flex items-center gap-2 font-sans">
                     <FiServer className="text-emerald-500" />
                     Infrastructure & Server Telemetry
                   </h4>
@@ -825,7 +750,7 @@ export default function ItDashboard() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-sans">
                   <div className="p-3 bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] rounded">
                     <span className="text-[10px] text-[var(--crm-ink-faint)] uppercase font-bold block mb-1">API Node Cluster</span>
                     <span className="font-bold text-emerald-400 font-mono flex items-center gap-1">
@@ -855,7 +780,6 @@ export default function ItDashboard() {
                   </div>
                 </div>
               </div>
-
             </div>
 
             {/* Split Grid: Recent Files & Job Postings */}

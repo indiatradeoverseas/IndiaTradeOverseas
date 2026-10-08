@@ -451,8 +451,8 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     onClick={() => handleSelectPreset('ALL')}
                     className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg border transition-all ${
                       presetTarget === 'ALL'
-                        ? 'bg-cyan-600 text-white border-cyan-400 font-extrabold shadow-sm'
-                        : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
+                        ? 'bg-blue-600 text-white border-blue-400 font-extrabold shadow-sm'
+                        : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500/20 font-bold'
                     }`}
                   >
                     All Staff ({recipients.length})
@@ -463,7 +463,7 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                     className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-sans uppercase rounded-lg border transition-all ${
                       presetTarget === 'MANAGERS'
                         ? 'bg-cyan-600 text-white border-cyan-400 font-extrabold shadow-sm'
-                        : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
+                        : 'bg-cyan-500/10 text-blue-700 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 font-bold'
                     }`}
                   >
                     All Managers ({managersCount})
@@ -682,23 +682,23 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                       )}
 
                       {/* Metadata Details & Download Action */}
-                      <div className="pt-2 border-t flex items-center justify-between text-[9.5px] font-sans text-[var(--crm-ink-faint)]" style={{ borderColor: 'var(--crm-line)' }}>
+                      <div className="pt-2 border-t flex items-center justify-between text-[10px] font-sans text-slate-700 dark:text-slate-300" style={{ borderColor: 'var(--crm-line)' }}>
                         <div>
                           {activeTab === 'RECEIVED' ? (
-                            <div>From: <strong className="text-cyan-600 dark:text-cyan-300 font-semibold">{senderName} {senderRole ? `(${senderRole})` : ''}</strong></div>
+                            <div className="text-slate-800 dark:text-slate-200 font-semibold">From: <strong className="text-[#2563EB] dark:text-blue-400 font-extrabold">{senderName} {senderRole ? `(${senderRole})` : ''}</strong></div>
                           ) : (
-                            <div>To: <strong className="text-emerald-600 dark:text-emerald-300 font-semibold">{recipientName} {recipientRole ? `(${recipientRole})` : ''}</strong></div>
+                            <div className="text-slate-800 dark:text-slate-200 font-semibold">To: <strong className="text-[#2563EB] dark:text-blue-400 font-extrabold">{recipientName} {recipientRole ? `(${recipientRole})` : ''}</strong></div>
                           )}
-                          <div className="text-[8.5px] text-[var(--crm-ink-faint)] flex items-center gap-1 mt-0.5 font-sans">
-                            <FiClock size={9} /> {new Date(fileObj.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          <div className="text-[9px] text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-0.5 font-sans font-medium">
+                            <FiClock size={10} /> {new Date(fileObj.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </div>
                         </div>
 
                         <button
                           onClick={() => handleDownload(fileObj)}
-                          className="px-3 py-1 text-[10px] font-sans uppercase font-bold bg-blue-200 text-blue-950 border border-blue-300 hover:bg-blue-300 rounded flex items-center gap-1.5 transition-all cursor-pointer"
+                          className="px-3.5 py-1.5 text-[10.5px] font-sans uppercase font-extrabold bg-[#2563EB] hover:bg-blue-700 text-white border border-blue-400 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         >
-                          <FiDownload size={12} /> Download
+                          <FiDownload size={12} className="text-white" /> Download
                         </button>
                       </div>
                     </motion.div>
@@ -784,11 +784,11 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                             <td className="py-3.5 px-4 font-bold text-blue-600 dark:text-blue-400">
                               {senderName}
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                            <td className="py-3.5 px-4 font-extrabold text-[#2563EB] dark:text-blue-400">
                               {recipientName}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-teal-300 border border-slate-300 dark:border-slate-800 px-2 py-0.5 rounded text-[9px] uppercase font-bold">
+                              <span className="bg-blue-50 text-[#2563EB] dark:bg-slate-800 dark:text-blue-300 border border-blue-200 dark:border-slate-700 px-2.5 py-1 rounded-md text-[9.5px] uppercase font-extrabold tracking-wider">
                                 {fileObj.department || 'GENERAL'}
                               </span>
                             </td>
@@ -802,13 +802,13 @@ export default function FileSharingWidget({ compact = false, initialTab = 'SHARE
                               <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => handleDownload(fileObj)}
-                                  className="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:border-rose-800 dark:text-rose-300 px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 cursor-pointer"
+                                  className="bg-[#2563EB] hover:bg-blue-700 text-white border border-blue-400 px-3.5 py-1.5 rounded-lg text-[10.5px] uppercase font-extrabold tracking-wider transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
                                 >
-                                  <FiDownload size={11} /> Download
+                                  <FiDownload size={12} className="text-white" /> Download
                                 </button>
                                 <button
                                   onClick={() => handleDelete(fileObj._id, fileObj.originalName)}
-                                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:border-rose-800/60 dark:text-rose-300 p-1.5 rounded transition cursor-pointer"
+                                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:border-rose-800/60 dark:text-rose-300 p-1.5 rounded-lg transition cursor-pointer"
                                   title="Delete Shared File"
                                 >
                                   <FiTrash2 size={12} />

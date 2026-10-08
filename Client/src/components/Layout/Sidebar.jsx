@@ -156,31 +156,31 @@ export default function Sidebar({ onClose }) {
               return (
                 <motion.div key={item.to} variants={navItem} className="space-y-1.5">
                   <div
-                    className="flex items-center rounded-xl border transition-all duration-200"
-                    style={{ background: routeActive ? 'var(--crm-accent-bg)' : 'transparent', borderColor: routeActive ? 'color-mix(in srgb, var(--crm-accent) 30%, var(--crm-line))' : 'transparent' }}
+                    className={`flex items-center rounded-xl border transition-all duration-200 ${
+                      routeActive
+                        ? 'nav-active-capsule border-transparent bg-white text-[#0A1B36] shadow-md font-extrabold'
+                        : 'border-transparent text-white hover:border-transparent hover:bg-white/10 hover:text-[#2563EB]'
+                    }`}
                   >
                     <NavLink
                       to={item.to}
                       end
                       onClick={onClose}
-                      className="group relative flex min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
+                      className="group relative flex min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.06em]"
                     >
                       <item.icon
                         size={15}
-                        style={{ color: routeActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                        className="transition-colors group-hover:opacity-100 shrink-0"
+                        className={`transition-colors shrink-0 ${routeActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'}`}
                       />
                       <span
-                        className="truncate"
-                        style={{ color: routeActive ? 'var(--crm-heading)' : 'var(--crm-ink-soft)' }}
+                        className={`truncate ${routeActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'}`}
                       >
                         {item.label}
                       </span>
                       {routeActive && (
                         <motion.span
                           layoutId="activeIndicator"
-                          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
-                          style={{ background: 'var(--crm-accent)' }}
+                          className="absolute left-0 top-2 bottom-2 w-[4px] rounded-r-full bg-amber-500"
                           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                         />
                       )}
@@ -188,8 +188,7 @@ export default function Sidebar({ onClose }) {
                     <button
                       type="button"
                       onClick={() => setManualToggle((prev) => ({ ...prev, [item.to]: !isOpen }))}
-                      className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer transition-colors"
-                      style={{ color: 'var(--crm-ink-faint)' }}
+                      className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer transition-colors text-white hover:text-[#2563EB]"
                       aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.label}`}
                       aria-expanded={isOpen}
                     >
@@ -198,7 +197,7 @@ export default function Sidebar({ onClose }) {
                         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                         className="flex"
                       >
-                        <FiChevronRight size={13} />
+                        <FiChevronRight size={13} className={routeActive ? 'text-[#0A1B36]' : 'text-white'} />
                       </motion.span>
                     </button>
                   </div>
@@ -221,21 +220,20 @@ export default function Sidebar({ onClose }) {
                                 <NavLink
                                   to={child.to}
                                   onClick={onClose}
-                                  className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] transition-all duration-200 ${
+                                  className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.05em] transition-all duration-200 ${
                                     childActive
-                                      ? 'bg-[var(--crm-accent-bg)] text-[var(--crm-heading)] font-semibold'
-                                      : 'text-[var(--crm-ink-faint)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                                      ? 'nav-active-capsule bg-white text-[#0A1B36] font-extrabold shadow-sm'
+                                      : 'text-white hover:bg-white/10 hover:text-[#2563EB]'
                                   }`}
                                 >
                                   <span
                                     className="h-1.5 w-1.5 shrink-0 rounded-full"
-                                    style={{ background: child.dotColor || 'var(--crm-accent)' }}
+                                    style={{ background: childActive ? '#0A1B36' : (child.dotColor || 'var(--crm-accent)') }}
                                   />
-                                  <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                                  <span className={`min-w-0 flex-1 truncate ${childActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'}`}>{child.label}</span>
                                   {childActive && (
                                     <span
-                                      className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full"
-                                      style={{ background: 'var(--crm-accent)' }}
+                                      className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-amber-500"
                                     />
                                   )}
                                 </NavLink>
@@ -255,18 +253,19 @@ export default function Sidebar({ onClose }) {
                 <NavLink
                   to={item.to}
                   onClick={onClose}
-                  className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] transition-all duration-200 ${
+                  className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.06em] transition-all duration-200 ${
                     isActive
-                      ? 'border-[var(--crm-line)] bg-[var(--crm-accent-bg)] text-[var(--crm-heading)]'
-                      : 'border-transparent text-[var(--crm-ink-soft)] hover:border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                      ? 'nav-active-capsule border-transparent bg-white text-[#0A1B36] shadow-md font-extrabold'
+                      : 'border-transparent text-white hover:border-transparent hover:bg-white/10 hover:text-[#2563EB]'
                   }`}
                 >
                   <item.icon
                     size={15}
-                    style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
-                    className="shrink-0 transition-colors group-hover:opacity-100"
+                    className={`shrink-0 transition-colors ${
+                      isActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'
+                    }`}
                   />
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  <span className={`min-w-0 flex-1 truncate ${isActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'}`}>{item.label}</span>
                   {item.to === '/crm/notifications' && unreadCount > 0 && (
                     <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
                       {unreadCount}
@@ -275,8 +274,7 @@ export default function Sidebar({ onClose }) {
                   {isActive && (
                     <motion.span
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
-                      style={{ background: 'var(--crm-accent)' }}
+                      className="absolute left-0 top-2 bottom-2 w-[4px] rounded-r-full bg-amber-500"
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     />
                   )}
@@ -291,8 +289,8 @@ export default function Sidebar({ onClose }) {
           <motion.div variants={navSection} initial="hidden" animate="visible" className="space-y-1.5">
             <div className="mb-2 px-3 text-left">
               <p
-                className="text-[9px] font-bold uppercase tracking-[0.2em]"
-                style={{ fontFamily: 'var(--crm-font-mono)', color: 'var(--crm-ink-faint)' }}
+                className="text-[9px] font-bold uppercase tracking-[0.2em] text-white"
+                style={{ fontFamily: 'var(--crm-font-mono)' }}
               >
                 Administration
               </p>
@@ -304,22 +302,23 @@ export default function Sidebar({ onClose }) {
                   <NavLink
                     to={item.to}
                     onClick={onClose}
-                    className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] transition-all duration-200 ${
+                    className={`group relative flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.06em] transition-all duration-200 ${
                       isActive
-                        ? 'border-[var(--crm-line)] bg-[var(--crm-accent-bg)] text-[var(--crm-heading)]'
-                        : 'border-transparent text-[var(--crm-ink-soft)] hover:border-[var(--crm-line)] hover:bg-[var(--crm-bg-raised)] hover:text-[var(--crm-ink)]'
+                        ? 'nav-active-capsule border-transparent bg-white text-[#0A1B36] shadow-md font-extrabold'
+                        : 'border-transparent text-white hover:border-transparent hover:bg-white/10 hover:text-[#2563EB]'
                     }`}
                   >
                     <item.icon
                       size={15}
-                      style={{ color: isActive ? 'var(--crm-accent)' : 'var(--crm-ink-faint)' }}
+                      className={`shrink-0 transition-colors ${
+                        isActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'
+                      }`}
                     />
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <span className={`min-w-0 flex-1 truncate ${isActive ? 'text-[#0A1B36]' : 'text-white group-hover:text-[#2563EB]'}`}>{item.label}</span>
                     {isActive && (
                       <motion.span
                         layoutId="activeIndicator"
-                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
-                        style={{ background: 'var(--crm-accent)' }}
+                        className="absolute left-0 top-2 bottom-2 w-[4px] rounded-r-full bg-amber-500"
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       />
                     )}
