@@ -29,7 +29,16 @@ const hasHROrAdminAccess = (user) => {
   const dept = (user.department || '').toUpperCase();
   const position = (user.position || '').toLowerCase();
 
-  if (['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes(role) || dept === 'HR' || position.includes('hr')) return true;
+  if (
+    ['HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'HRMANAGE', 'HREXECUTIVE', 'MANAGER', 'SALES_MANAGER'].includes(role) ||
+    role.includes('MANAGER') ||
+    dept === 'HR' ||
+    dept === 'MANAGEMENT' ||
+    position.includes('hr') ||
+    position.includes('manager')
+  ) {
+    return true;
+  }
   if (user.jobPermission === true) return true;
 
   return false;
@@ -38,7 +47,17 @@ const hasHROrAdminAccess = (user) => {
 const hasJobPermission = (user) => {
   if (!user) return false;
   if (isExecutiveOrAdmin(user)) return true;
-  if (['HR_MANAGER', 'HR_EXECUTIVE', 'HR'].includes((user.role || '').toUpperCase())) return true;
+  const role = (user.role || '').toUpperCase();
+  const position = (user.position || '').toLowerCase();
+
+  if (
+    ['HR_MANAGER', 'HR_EXECUTIVE', 'HR', 'HRMANAGE', 'HREXECUTIVE', 'MANAGER', 'SALES_MANAGER'].includes(role) ||
+    role.includes('MANAGER') ||
+    position.includes('hr') ||
+    position.includes('manager')
+  ) {
+    return true;
+  }
   return user.jobPermission === true;
 };
 

@@ -55,6 +55,10 @@ import { socketService } from '../../services/socket';
 import EmployeeActivityMonitor from '../../components/crm/EmployeeActivityMonitor';
 import HrWorkLogWidget from '../../components/crm/HrWorkLogWidget';
 import CareerLeadsSection from '../../components/crm/CareerLeadsSection';
+import WarningLetterModal from '../../components/crm/warning';
+import TerminationLetterModal from '../../components/crm/Termination';
+import PiLetterModal from '../../components/crm/Pi';
+import ExperienceLetterModal from '../../components/crm/Experience';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, LabelList } from 'recharts';
 
 const CARD = { borderColor: 'var(--crm-line)', background: 'var(--crm-bg-raised)', boxShadow: 'var(--crm-shadow)' };
@@ -118,6 +122,10 @@ export default function HrManagerDashboard() {
   const [viewMode, setViewMode] = useState('grid');
   const [activeDropdownEmpId, setActiveDropdownEmpId] = useState(null);
 
+  // HR Letter Modal & Header Dropdown State
+  const [letterModal, setLetterModal] = useState({ open: false, type: null, employee: null });
+  const [openHeaderLetterDropdown, setOpenHeaderLetterDropdown] = useState(false);
+
   // Backend state
   const [employees, setEmployees] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -151,7 +159,7 @@ export default function HrManagerDashboard() {
   const [filterEmpRole, setFilterEmpRole] = useState('ALL');
   const [filterEmpDept, setFilterEmpDept] = useState('ALL');
 
-  // Expanded card indices
+  // Expanded card index
   const [expandedEmpId, setExpandedEmpId] = useState(null);
 
   // Modals / Forms
@@ -1072,7 +1080,7 @@ const handleTriggerReset = async () => {
   const stats = [
     { title: 'Active Employees', value: activeEmployeesCount, icon: FiUsers, tone: 'ink' },
     { title: 'Open Vacancies', value: activeVacanciesCount, icon: FiBriefcase, tone: 'accent' },
-    { title: 'Pending Applications', value: `${pendingAppsCount} (Total: ${applications.length})`, icon: FiFileText, tone: 'warning' },
+    { title: 'Pending Applications', value: `${pendingAppsCount} (${applications.length})`, icon: FiFileText, tone: 'warning' },
     { title: 'Talent Bank Leads', value: careerLeadsCount ?? 0, icon: FiLayers, tone: 'accent' },
     { title: 'Attendance Today', value: `${attendanceTodayPct}%`, icon: FiCheckCircle, tone: 'positive' }
   ];
@@ -1094,7 +1102,6 @@ const handleTriggerReset = async () => {
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto flex-shrink-0">
-          
           <button
             onClick={handleOpenAssignTask}
             className="text-[9px] border px-2.5 py-1 uppercase tracking-wide whitespace-nowrap rounded-sm transition-all cursor-pointer hover:bg-[var(--crm-bg-raised)]/80"
@@ -1108,7 +1115,8 @@ const handleTriggerReset = async () => {
           >
             Upload Career Leads
           </button>
-         
+
+
         </div>
       </motion.div>
 
@@ -2063,7 +2071,7 @@ const handleTriggerReset = async () => {
                                         <div className="absolute right-0 bottom-full mb-1.5 w-44 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] shadow-2xl rounded-sm p-1 z-50 text-[9px] font-mono font-bold uppercase text-left space-y-0.5">
                                           <Link
                                             to={`/crm/employees/${emp._id}`}
-                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white decoration-none"
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)] decoration-none"
                                           >
                                             <FiUser size={10} className="text-[var(--crm-accent)]" />
                                             View Profile & Payslips
@@ -2073,7 +2081,7 @@ const handleTriggerReset = async () => {
                                               setActiveDropdownEmpId(null);
                                               handleOpenAssignTask(emp.employeeId);
                                             }}
-                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white"
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)]"
                                           >
                                             <FiCheckSquare size={10} />
                                             Assign Task
@@ -2083,7 +2091,7 @@ const handleTriggerReset = async () => {
                                               setActiveDropdownEmpId(null);
                                               handleOpenAssignAsset(emp.employeeId);
                                             }}
-                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-white"
+                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)]"
                                           >
                                             <FiHardDrive size={10} />
                                             Assign Asset
@@ -2093,11 +2101,56 @@ const handleTriggerReset = async () => {
                                               setActiveDropdownEmpId(null);
                                               handleOpenAddPip(emp.employeeId);
                                             }}
-                                            className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-danger)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-danger)]"
+                                            className="w-full text-left px-2 py-1.5 hover:bg-red-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-bold"
                                           >
                                             <FiAlertCircle size={10} />
                                             Initiate PIP
-                                          </button>
+                                           </button>
+
+                                           {/* HR Formal Letter Options */}
+                                           <div className="border-t border-[var(--crm-line)]/60 my-1 pt-1 space-y-0.5">
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'WARNING', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-amber-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-amber-700 dark:text-amber-400"
+                                             >
+                                               <FiAlertCircle size={10} />
+                                               Warning Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'PI', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-amber-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-amber-700 dark:text-amber-300"
+                                             >
+                                               <FiTrendingUp size={10} />
+                                               PIP Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'EXPERIENCE', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-sky-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-sky-700 dark:text-sky-400"
+                                             >
+                                               <FiAward size={10} />
+                                               Offer / Exp Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'TERMINATION', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-rose-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-rose-700 dark:text-rose-400"
+                                             >
+                                               <FiTrash2 size={10} />
+                                               Termination Letter
+                                             </button>
+                                           </div>
+                                           {/* HR Formal Letter Options End */}
                                         </div>
                                       </>
                                     )}
@@ -2168,12 +2221,113 @@ const handleTriggerReset = async () => {
                                   <span className="bg-[var(--crm-bg-sunken)] border border-[var(--crm-line)] px-2 py-0.5 rounded-sm uppercase">
                                     {displayDept}
                                   </span>
-                                  <Link
-                                    to={`/crm/employees/${emp._id}`}
-                                    className="bg-teal-950/60 text-teal-400 border border-teal-800/40 px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-teal-900 transition duration-150 cursor-pointer text-[8px] flex items-center gap-1 decoration-none font-bold"
-                                  >
-                                    <FiUser size={10} /> Profile / Payslips
-                                  </Link>
+
+
+                                   <div className="relative">
+                                     <button
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         setActiveDropdownEmpId(activeDropdownEmpId === emp._id ? null : emp._id);
+                                       }}
+                                       className="p-1 border border-[var(--crm-line)] rounded-sm hover:border-[var(--crm-heading)] transition-all cursor-pointer text-[var(--crm-ink-soft)] hover:text-white"
+                                       title="Actions & HR Letters"
+                                     >
+                                       <FiMoreHorizontal size={11} />
+                                     </button>
+
+                                     {activeDropdownEmpId === emp._id && (
+                                       <>
+                                         <div 
+                                           className="fixed inset-0 z-45" 
+                                           onClick={() => setActiveDropdownEmpId(null)}
+                                         />
+                                         <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--crm-bg-raised)] border border-[var(--crm-line)] shadow-2xl rounded-sm p-1 z-50 text-[9px] font-mono font-bold uppercase text-left space-y-0.5">
+                                           <Link
+                                             to={`/crm/employees/${emp._id}`}
+                                             className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)] decoration-none"
+                                           >
+                                             <FiUser size={10} className="text-[var(--crm-accent)]" />
+                                             View Profile & Payslips
+                                           </Link>
+                                           <button
+                                             onClick={() => {
+                                               setActiveDropdownEmpId(null);
+                                               handleOpenAssignTask(emp.employeeId);
+                                             }}
+                                             className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)]"
+                                           >
+                                             <FiCheckSquare size={10} />
+                                             Assign Task
+                                           </button>
+                                           <button
+                                             onClick={() => {
+                                               setActiveDropdownEmpId(null);
+                                               handleOpenAssignAsset(emp.employeeId);
+                                             }}
+                                             className="w-full text-left px-2 py-1.5 hover:bg-[var(--crm-bg)] hover:text-[var(--crm-accent)] rounded-sm transition cursor-pointer flex items-center gap-1.5 text-[var(--crm-heading)]"
+                                           >
+                                             <FiHardDrive size={10} />
+                                             Assign Asset
+                                           </button>
+                                           <button
+                                             onClick={() => {
+                                               setActiveDropdownEmpId(null);
+                                               handleOpenAddPip(emp.employeeId);
+                                             }}
+                                             className="w-full text-left px-2 py-1.5 hover:bg-red-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-bold"
+                                           >
+                                             <FiAlertCircle size={10} />
+                                             Initiate PIP
+                                           </button>
+
+                                           {/* HR Formal Letter Options */}
+                                           <div className="border-t border-[var(--crm-line)]/60 my-1 pt-1 space-y-0.5">
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'WARNING', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-amber-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-amber-700 dark:text-amber-400"
+                                             >
+                                               <FiAlertCircle size={10} />
+                                               Warning Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'PI', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-amber-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-amber-700 dark:text-amber-300"
+                                             >
+                                               <FiTrendingUp size={10} />
+                                               PIP Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'EXPERIENCE', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-sky-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-sky-700 dark:text-sky-400"
+                                             >
+                                               <FiAward size={10} />
+                                               Offer / Exp Letter
+                                             </button>
+                                             <button
+                                               onClick={() => {
+                                                 setActiveDropdownEmpId(null);
+                                                 setLetterModal({ open: true, type: 'TERMINATION', employee: emp });
+                                               }}
+                                               className="w-full text-left px-2 py-1.5 hover:bg-rose-500/15 rounded-sm transition cursor-pointer flex items-center gap-1.5 text-rose-700 dark:text-rose-400"
+                                             >
+                                               <FiTrash2 size={10} />
+                                               Termination Letter
+                                             </button>
+                                           </div>
+                                         </div>
+                                       </>
+                                     )}
+                                   </div>
+                                   {/* HR Actions Menu */}
                                   <button
                                     onClick={() => setExpandedEmpId(isExpanded ? null : emp._id)}
                                     className="bg-[var(--crm-heading)] text-[var(--crm-bg-sunken)] px-2 py-0.5 rounded-sm uppercase tracking-wider hover:bg-[var(--crm-ink-soft)] transition duration-150 cursor-pointer text-[8px]"
@@ -4288,6 +4442,39 @@ const handleTriggerReset = async () => {
             </form>
           </div>
         </div>
+      )}
+      {/* HR Formal Letter Modals */}
+      {letterModal.open && letterModal.type === 'WARNING' && (
+        <WarningLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+      {letterModal.open && letterModal.type === 'TERMINATION' && (
+        <TerminationLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+      {letterModal.open && letterModal.type === 'PI' && (
+        <PiLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
+      )}
+      {letterModal.open && letterModal.type === 'EXPERIENCE' && (
+        <ExperienceLetterModal
+          isOpen={true}
+          onClose={() => setLetterModal({ open: false, type: null, employee: null })}
+          employee={letterModal.employee}
+          allEmployees={employees}
+        />
       )}
     </motion.div>
   );

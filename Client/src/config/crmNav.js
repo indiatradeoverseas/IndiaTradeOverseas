@@ -1490,10 +1490,10 @@ export function getCrmAdminNavItems(user) {
     },
 
 
-    // Employees
+    // Employees (Admin only, hidden for HRManager per user request)
     (
-      admin ||
-      hrMgr
+      admin &&
+      !hrMgr
     ) && {
       to:
         '/crm/employees',

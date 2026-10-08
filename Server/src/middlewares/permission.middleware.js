@@ -80,7 +80,52 @@ const rolePermissions = {
     exportPermission: false,
     leadPermission: true,
     taskPermission: true,
-    documentPermission: true
+    documentPermission: true,
+    jobPermission: true
+  },
+  HR_MANAGER: {
+    exportPermission: false,
+    importPermission: true,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    jobPermission: true
+  },
+  HR_EXECUTIVE: {
+    exportPermission: false,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    jobPermission: true
+  },
+  HRMANAGE: {
+    exportPermission: false,
+    importPermission: true,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    jobPermission: true
+  },
+  HREXECUTIVE: {
+    exportPermission: false,
+    leadPermission: true,
+    taskPermission: true,
+    documentPermission: true,
+    jobPermission: true
+  },
+  FINANCE_MANAGER: {
+    exportPermission: false,
+    paymentPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true
+  },
+  FINANCE_EXECUTIVE: {
+    exportPermission: false,
+    paymentPermission: true,
+    leadPermission: true,
+    documentPermission: true,
+    taskPermission: true
   },
   DRIVER: {
     exportPermission: false,
@@ -225,30 +270,20 @@ function checkPermission(...permissionNames) {
         return false; // Block export by default for Managers & Employees
       }
 
-      // For Managers (SALES_MANAGER, MANAGER, etc.), grant standard operational permissions by default (leads, tasks, import, documents, dispatch, payment, quotation)
-      if (isManagerUser) {
-        if (req.user.permissions && (req.user.permissions[shortName] === false || req.user.permissions[perm] === false)) {
-          return false; // Founder explicitly revoked this permission
-        }
-        return true; // Managers get default operational access to leads, tasks, import, docs, etc.
-      }
-
-      // 3. For non-manager employees: Check explicit true on user model or nested permissions
-      if (req.user.permissions) {
-        if (req.user.permissions[shortName] === true || req.user.permissions[perm] === true) return true;
-        // Don't auto-block leads or tasks for active employees if shortName is lead or task
-        if (shortName !== 'lead' && shortName !== 'task' && perm !== 'leadPermission' && perm !== 'taskPermission') {
-          if (req.user.permissions[shortName] === false || req.user.permissions[perm] === false) return false;
-        }
-      }
-
+      // 1. Check explicit true on nested permissions or top-level permissions
+      if (req.user.permissions && (req.user.permissions[shortName] === true || req.user.permissions[perm] === true)) return true;
       if (req.user[perm] === true) return true;
 
-      // Check role default
+      // 2. Check role defaults defined in rolePermissions matrix
       const rolePerms = rolePermissions[userRole] || rolePermissions[userDept];
       if (rolePerms && rolePerms[perm] === true) return true;
 
-      // Default grant lead/task permissions for general active employees
+      // 3. For Managers (SALES_MANAGER, MANAGER, HR_MANAGER, etc.), grant standard operational permissions by default
+      if (isManagerUser) {
+        return true;
+      }
+
+      // 4. Default grant lead/task permissions for general active employees
       if (shortName === 'lead' || shortName === 'task' || perm === 'leadPermission' || perm === 'taskPermission') {
         return true;
       }
