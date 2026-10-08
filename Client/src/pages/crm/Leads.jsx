@@ -401,6 +401,39 @@ export default function Leads() {
   const [showAnalyticsGraph, setShowAnalyticsGraph] = useState(true);
   const [graphViewMode, setGraphViewMode] = useState('BAR'); // 'BAR' | 'PIE' | 'ALL'
 
+  const parseValuationNumber = (lead) => {
+    if (!lead) return 0;
+    if (typeof lead.leadValue === 'number' && !isNaN(lead.leadValue) && lead.leadValue > 0) {
+      return lead.leadValue;
+    }
+    if (lead.leadValue) {
+      const cleaned = String(lead.leadValue).replace(/,/g, '');
+      const numMatch = cleaned.match(/(\d+(?:\.\d+)?)/);
+      if (numMatch && numMatch[1]) {
+        const parsed = parseFloat(numMatch[1]);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    if (lead.estimatedValue) {
+      const cleaned = String(lead.estimatedValue).replace(/,/g, '');
+      const numMatch = cleaned.match(/(\d+(?:\.\d+)?)/);
+      if (numMatch && numMatch[1]) {
+        const parsed = parseFloat(numMatch[1]);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    const text = lead.chatSummary || lead.remarks || lead.notes || (lead.originalPayload ? JSON.stringify(lead.originalPayload) : '');
+    if (text) {
+      const match = text.match(/(?:Valuation|Budget|Value|Valuation\/Budget|Price|Amount)[^\n:]*[:—]?\s*([₹\d.,]+)/i);
+      if (match && match[1]) {
+        const cleaned = match[1].replace(/[^0-9.]/g, '');
+        const parsed = parseFloat(cleaned);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return 0;
+  };
+
   const pipelineAnalytics = useMemo(() => {
     const totalLeads = leads.length;
     let totalGrossValue = 0;
@@ -417,7 +450,7 @@ export default function Leads() {
     const categoryTotals = {};
 
     leads.forEach(l => {
-      const val = Number(l.leadValue) || 0;
+      const val = parseValuationNumber(l);
       const st = String(l.stage || '').toUpperCase();
       const cat = String(l.productCategory || 'Uncategorized').toUpperCase();
 
@@ -446,8 +479,8 @@ export default function Leads() {
     const conversionRate = totalLeads > 0 ? Math.round((wonCount / totalLeads) * 100) : 0;
 
     const stageChartData = [
-      { name: 'New Lead', count: newLeadCount, value: leads.filter(l => (l.stage || '').toUpperCase().includes('NEW')).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#06b6d4' },
-      { name: 'In Discussion', count: inDiscussionCount, value: leads.filter(l => !(l.stage || '').toUpperCase().includes('NEW') && !['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAD', 'LOST'].includes((l.stage || '').toUpperCase())).reduce((s, x) => s + Number(x.leadValue || 0), 0), fill: '#6366f1' },
+      { name: 'New Lead', count: newLeadCount, value: leads.filter(l => (l.stage || '').toUpperCase().includes('NEW')).reduce((s, x) => s + parseValuationNumber(x), 0), fill: '#06b6d4' },
+      { name: 'In Discussion', count: inDiscussionCount, value: leads.filter(l => !(l.stage || '').toUpperCase().includes('NEW') && !['CLOSED_WON', 'DEAL_WON', 'ORDER_CONFIRMED', 'CLOSED_LOST', 'DEAD', 'LOST'].includes((l.stage || '').toUpperCase())).reduce((s, x) => s + parseValuationNumber(x), 0), fill: '#6366f1' },
       { name: 'Deals Won', count: wonCount, value: totalWonValue, fill: '#10b981' },
       { name: 'Lost/Dead', count: lostCount, value: totalLostValue, fill: '#f43f5e' }
     ];
@@ -553,8 +586,9 @@ export default function Leads() {
 
   const getLeadValuationDisplay = (lead) => {
     if (!lead) return '—';
-    if (lead.leadValue && Number(lead.leadValue) > 0) {
-      return `₹${Number(lead.leadValue).toLocaleString('en-IN')}`;
+    const valNum = parseValuationNumber(lead);
+    if (valNum > 0) {
+      return `₹${valNum.toLocaleString('en-IN')}`;
     }
     if (lead.estimatedValue && String(lead.estimatedValue).trim().length > 0) {
       return String(lead.estimatedValue).trim();
@@ -567,6 +601,27 @@ export default function Leads() {
       }
     }
     return '—';
+  };
+
+  const getLeadCustomerName = (lead) => {
+    if (!lead) return 'Valued Consignee';
+    if (lead.customerName && lead.customerName.trim().length > 0) return lead.customerName.trim();
+    if (lead.contactName && lead.contactName.trim().length > 0) return lead.contactName.trim();
+    if (lead.fullName && lead.fullName.trim().length > 0) return lead.fullName.trim();
+    if (lead.name && lead.name.trim().length > 0) return lead.name.trim();
+    if (lead.phone && lead.phone.length >= 4) return `Client (${lead.phone.slice(-4)})`;
+    return 'Valued Consignee';
+  };
+
+  const getLeadCompanyName = (lead) => {
+    if (!lead) return 'Private Enterprise';
+    if (lead.companyName && lead.companyName.trim().length > 0) {
+      if (lead.companyName.includes('| Quantity:') || lead.companyName.includes('Destination:')) {
+        return 'Private Enterprise';
+      }
+      return lead.companyName.trim();
+    }
+    return 'Private Enterprise';
   };
 
   // Toggle between Table and Visual Kanban Board
@@ -2170,7 +2225,7 @@ export default function Leads() {
                         <span className="text-[10px] text-[var(--crm-ink-faint)]">Valuation in ₹ INR</span>
                       </div>
                       <div className="h-64 w-full min-h-[250px]">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                        <ResponsiveContainer width="100%" height={250} minWidth={100} minHeight={200}>
                           <BarChart data={pipelineAnalytics.stageChartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                             <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--crm-ink-faint)' }} />
@@ -2218,7 +2273,7 @@ export default function Leads() {
                         <span className="text-[10px] text-[var(--crm-ink-faint)]">Product Categories</span>
                       </div>
                       <div className="h-64 w-full min-h-[250px]">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+                        <ResponsiveContainer width="100%" height={250} minWidth={100} minHeight={200}>
                           <PieChart>
                             <Pie
                               data={pipelineAnalytics.categoryChartData}
@@ -2538,33 +2593,34 @@ export default function Leads() {
 
         {/* MODE 1: DATA TABLE VIEW */}
         {selectedLeadIds.length > 0 && isManagerOrAdmin && (
-          <motion.div variants={blockVariants} className="bg-amber-950/90 border border-amber-600/50 p-3 rounded-sm font-mono text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+          <motion.div variants={blockVariants} className="bg-blue-900 border border-blue-500 p-3 rounded-sm font-mono text-xs text-white flex flex-wrap items-center justify-between gap-3 shadow-xl">
             <div className="flex items-center gap-2">
-              <span className="font-bold uppercase tracking-wider">{selectedLeadIds.length} Leads Selected</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-300 animate-pulse" />
+              <span className="font-bold uppercase tracking-wider text-white">{selectedLeadIds.length} Leads Selected</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 font-sans">
               <select
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
-                className="bg-black/60 border border-amber-500/40 text-amber-100 text-xs px-2.5 py-1 rounded outline-none"
+                className="font-semibold border border-blue-300 text-xs px-3 py-1.5 rounded outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer shadow-sm font-sans"
               >
-                <option value="">Assign To...</option>
+                <option value="" className="text-slate-900 font-sans">Assign To...</option>
                 {executives.map(e => (
-                  <option key={e._id || e.employeeId} value={e._id || e.employeeId}>{e.fullName || e.name}</option>
+                  <option key={e._id || e.employeeId} value={e._id || e.employeeId} className=" text-slate-900 font-sans">{e.fullName || e.name}</option>
                 ))}
               </select>
               <button
                 onClick={handleBulkAssign}
                 disabled={assigningBulk}
-                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase text-[10px] rounded transition cursor-pointer"
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[10px] tracking-wider rounded transition cursor-pointer shadow-md border border-emerald-400/40"
               >
                 {assigningBulk ? 'Assigning...' : 'Bulk Assign'}
               </button>
               <button
                 onClick={() => setDeleteConfirmLead('BULK')}
-                className="px-3 py-1 bg-rose-800 hover:bg-rose-700 text-white font-bold uppercase text-[10px] rounded transition cursor-pointer flex items-center gap-1 shadow-sm"
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold uppercase text-[10px] tracking-wider rounded transition cursor-pointer flex items-center gap-1.5 shadow-md border border-rose-500/40"
               >
-                <FiTrash2 size={11} />
+                <FiTrash2 size={12} />
                 <span>Delete Selected ({selectedLeadIds.length})</span>
               </button>
             </div>
@@ -2638,7 +2694,7 @@ export default function Leads() {
                           <td className="py-3.5 px-5 min-w-[160px]">
                             <div className="flex items-center gap-2 flex-wrap">
                               <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] hover:underline font-bold">
-                                {lead.customerName}
+                                {getLeadCustomerName(lead)}
                               </Link>
                               {((lead.priority || '').toUpperCase() === 'DEAD' || (lead.targetDate && new Date(lead.targetDate) < new Date(new Date().setHours(0, 0, 0, 0)) && !completedStages.includes((lead.stage || '').toUpperCase()))) ? (
                                 <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-zinc-800 text-zinc-200 border border-zinc-600 shadow-xs">DEAD 💀</span>
@@ -2867,14 +2923,24 @@ export default function Leads() {
 
                       {/* Main Customer Info */}
                       <div className="flex justify-between items-start gap-2">
-                        <div className="space-y-0.5 min-w-0">
-                          <div className="font-serif text-sm text-[var(--crm-heading)] font-semibold truncate">{lead.customerName}</div>
-                          <div className="text-[10px] text-[var(--crm-ink-faint)] truncate">{lead.companyName || 'Private Enterprise'}</div>
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <Link to={`/crm/leads/${lead._id}`} className="font-serif text-sm text-[var(--crm-heading)] font-bold hover:underline block truncate">
+                            {getLeadCustomerName(lead)}
+                          </Link>
+                          <div className="text-[10px] text-[var(--crm-ink-faint)] font-sans truncate">
+                            {getLeadCompanyName(lead)}
+                          </div>
+                          {(lead.quantity || lead.destination || lead.location) && (
+                            <div className="text-[9px] font-mono text-teal-600 dark:text-teal-400 font-semibold pt-0.5 truncate">
+                              {lead.quantity ? `Qty: ${lead.quantity} ` : ''}
+                              {lead.destination || lead.location ? `| Dest: ${lead.destination || lead.location}` : ''}
+                            </div>
+                          )}
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="px-2 py-0.5 text-[9px] font-bold bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded block">
-                            {lead.productCategory}
+                          <span className="px-2 py-0.5 text-[9px] font-bold bg-[var(--crm-bg-sunken)] border border-[var(--crm-ink-soft)]/20 text-[var(--crm-ink-soft)] rounded block uppercase">
+                            {lead.productCategory || 'GENERAL'}
                           </span>
                           {getLeadValuationDisplay(lead) !== '—' && (
                             <span className="text-[11px] font-bold text-emerald-400 block mt-1">{getLeadValuationDisplay(lead)}</span>
@@ -3071,13 +3137,13 @@ export default function Leads() {
                               Score: {item.score ?? item.leadScore ?? '—'}
                             </span>
                           </div>
-                          <div className="font-serif text-xs font-bold text-[var(--crm-heading)]">{item.customerName}</div>
+                          <div className="font-serif text-xs font-bold text-[var(--crm-heading)]">{getLeadCustomerName(item)}</div>
                           <div className="text-[10px] font-mono text-[var(--crm-ink-faint)]">{item.productCategory} • {item.country || 'IN'}</div>
-                          {item.leadValue ? (
+                          {getLeadValuationDisplay(item) !== '—' && (
                             <div className="text-xs font-mono font-bold text-[var(--crm-positive)]">
-                              ₹{item.leadValue.toLocaleString('en-IN')}
+                              {getLeadValuationDisplay(item)}
                             </div>
-                          ) : null}
+                          )}
                           <div className="pt-2 border-t border-[var(--crm-ink-soft)]/10 flex justify-between items-center text-[10px] font-mono">
                             <button onClick={() => triggerWhatsApp(item.whatsAppNumber || item.phone)} className="text-[var(--crm-positive)] hover:underline cursor-pointer">
                               WhatsApp
@@ -3683,33 +3749,33 @@ Valuation: ₹2,50,000`}
             animate={{ y: 0, x: '-50%', opacity: 1 }}
             exit={{ y: 80, x: '-50%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-            className="fixed bottom-16 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[92%] max-w-xl bg-slate-950/95 border border-teal-500/40 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl shadow-2xl shadow-teal-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 font-mono text-xs text-left overflow-hidden"
+            className="fixed bottom-16 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[92%] max-w-xl bg-gradient-to-r from-blue-800 via-blue-900 to-blue-950 border border-blue-500 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl shadow-2xl shadow-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 font-mono text-xs text-left overflow-hidden text-white"
           >
             <div className="flex items-center gap-3">
-              <span className="bg-teal-950/50 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-sm font-bold">
+              <span className="bg-blue-950/80 text-cyan-300 border border-blue-400/50 px-2.5 py-1 rounded-sm font-bold">
                 {selectedLeadIds.length} Selected
               </span>
               <button
                 onClick={() => setSelectedLeadIds([])}
-                className="text-[var(--crm-ink-faint)] hover:text-white transition-colors cursor-pointer"
+                className="text-blue-200 hover:text-white underline transition-colors cursor-pointer text-xs"
               >
                 Clear
               </button>
             </div>
 
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto font-sans">
               <div className="relative flex-1 sm:flex-initial">
                 <select
                   value={assigneeId}
                   onChange={(e) => setAssigneeId(e.target.value)}
-                  className="w-full sm:w-56 px-3 py-2 bg-black border border-[var(--crm-line)] rounded-sm outline-none text-[var(--crm-heading)] appearance-none cursor-pointer"
+                  className="w-full sm:w-56 px-3 py-2 bg-white text-slate-900 font-semibold border border-blue-300 rounded-sm outline-none appearance-none cursor-pointer text-xs font-sans shadow-sm"
                 >
-                  <option value="">Choose Executive...</option>
+                  <option value="" className="bg-white text-slate-900 font-sans">Choose Executive...</option>
                   {executives.map(e => (
-                    <option key={e._id} value={e._id} className="bg-black">{e.name || e.fullName} ({e.email})</option>
+                    <option key={e._id} value={e._id} className="bg-white text-slate-900 font-sans">{e.name || e.fullName} ({e.email})</option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--crm-ink-faint)]">
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-700">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -3719,7 +3785,7 @@ Valuation: ₹2,50,000`}
               <button
                 onClick={handleBulkAssign}
                 disabled={assigningBulk}
-                className="bg-teal-600 hover:bg-teal-500 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-sm transition-all disabled:opacity-40 cursor-pointer shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-wider px-4 py-2 rounded-sm transition-all disabled:opacity-40 cursor-pointer shrink-0 shadow-md border border-emerald-400/40"
               >
                 {assigningBulk ? 'Assigning...' : 'Assign Leads'}
               </button>
